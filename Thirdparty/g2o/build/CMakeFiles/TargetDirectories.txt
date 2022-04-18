@@ -1,0 +1,3 @@
+/home/lutao/Downloads/ORBSLAM2_detailed_comments/Thirdparty/g2o/build/CMakeFiles/edit_cache.dir
+/home/lutao/Downloads/ORBSLAM2_detailed_comments/Thirdparty/g2o/build/CMakeFiles/rebuild_cache.dir
+/home/lutao/Downloads/ORBSLAM2_detailed_comments/Thirdparty/g2o/build/CMakeFiles/g2o.dir

@@ -1,0 +1,22 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# File path Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+File.ORBvoc: "/home/lutao/Documents/my_slam_ws/src/lt_slam/Vocabulary/ORBvoc.bin"
+File.KITTI: "/home/lutao/Documents/my_slam_ws/src/lt_slam/cfg/KITTI00-02.yaml"
+#File.KITTI: "/home/lutao/Documents/my_slam_ws/src/lt_slam/cfg/KITTI03.yaml"
+#File.KITTI: "/home/lutao/Documents/my_slam_ws/src/lt_slam/cfg/KITTI04-12.yaml"
+File.Img: "/media/lutao/13237515102/KITTI/00/image_0/"
+File.calib: "/media/lutao/13237515102/KITTI/00/calib.txt"
+File.times: "/media/lutao/13237515102/KITTI/00/times.txt"
+File.Groundtruth: "/media/lutao/13237515102/path/00/GroundTruth.txt"
+File.stereo: "/media/lutao/13237515102/path/00/ORBSLAM2_stereo_noloop.txt"
+
+#File.stereo: "/home/lutao/FusionSLAM.txt"
+File.stereo_noloop: "/media/lutao/13237515102/path/00/2021.4.2_loop.txt"
+
+File.lidar_config: "/home/lutao/Documents/my_slam_ws/src/lt_slam/cfg/lidar_slam.yaml"
+
+SLAM.LoopDetection: 1

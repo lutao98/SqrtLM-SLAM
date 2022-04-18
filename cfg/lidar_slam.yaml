@@ -1,0 +1,65 @@
+%YAML:1.0
+#laser information
+using_PointXYZI: false
+using_PointXYZIR: true
+using_PointXYZIRT: false
+using_livox: false
+using_32c: false
+using_rs80: false
+deskew: false
+even: false
+
+sensor_type: 64
+deg_diff: 0.2
+scan_period: 0.1
+lower_bound: -24.9
+upper_bound: 2
+
+
+#laser using information
+using_lower_ring_num: 1
+using_upper_ring_num: 64
+#extration feature setting information
+num_scan_subregions: 8
+num_curvature_regions_corner: 3
+num_curvature_regions_flat: 5
+num_feature_regions: 5
+ground_z_bound: -1.5
+surf_curv_th: 0.001
+sharp_curv_th: 20 #20
+max_corner_sharp: 3 #3
+max_corner_less_sharp: 30 #30
+max_surf_flat: 2
+max_surf_less_flat: 6
+max_sq_dis: 1
+lower_ring_num_sharp_point: 1
+upper_ring_num_sharp_point: 40
+lower_ring_num_x_rot: 5
+upper_ring_num_x_rot: 50
+lower_ring_num_y_rot: 5
+upper_ring_num_y_rot: 50
+lower_ring_num_z_trans: 5
+upper_ring_num_z_trans: 50
+lower_ring_num_z_rot_xy_trans: 5
+upper_ring_num_z_rot_xy_trans: 50
+flat_extract_num_x_rot: 150
+flat_extract_num_y_rot: 150
+flat_extract_num_z_rot: 150
+flat_extract_num_x_trans: 150
+flat_extract_num_y_trans: 150
+flat_extract_num_z_trans: 150
+less_flat_filter_size: 0.2
+distance_sq_threshold: 0.2
+
+using_corner_point_vector: 0
+using_surf_point_normal: 0
+
+corner_optimized_weight: 30
+flat_optimized_weight: 50
+
+using_sharp_point: 0
+using_flat_point: 1
+using_last_sharp_point: false
+using_last_flat_point: false
+using_local_map: false
+
