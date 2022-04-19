@@ -98,6 +98,8 @@ ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/include/algorithm
 ${PROJECT_SOURCE_DIR}/include/data_structure
 ${PROJECT_SOURCE_DIR}/include/utils
+${PROJECT_SOURCE_DIR}/include/FrontEnd
+${PROJECT_SOURCE_DIR}/include/BackEnd
 ${EIGEN3_INCLUDE_DIR}
 #${Boost_INCLUDE_DIRS}
 )
@@ -120,21 +122,21 @@ src/data_structure/MapPoint.cc
 src/data_structure/KeyFrame.cc
 src/data_structure/Map.cc
 src/data_structure/Frame.cc
-src/algorithm/ORBextractor.cc
+src/FrontEnd/ORBextractor.cc
+src/FrontEnd/ORBmatcher.cc
+src/FrontEnd/Initializer.cc
+src/FrontEnd/Tracking.cc
+src/BackEnd/LocalMapping.cc
+src/BackEnd/LoopClosing.cc
+src/BackEnd/Optimizer.cc
+src/BackEnd/g2oOptimizer.cc
+src/BackEnd/CeresOptimizer.cc
 src/algorithm/KeyFrameDatabase.cc
-src/algorithm/ORBmatcher.cc
-src/algorithm/Initializer.cc
 src/algorithm/Sim3Solver.cc
 src/algorithm/PnPsolver.cc
-src/algorithm/LocalMapping.cc
-src/algorithm/LoopClosing.cc
-src/algorithm/Tracking.cc
-src/algorithm/System.cc
 src/algorithm/lidarOdom.cc
-src/algorithm/Optimizer.cc
-src/algorithm/g2oOptimizer.cc
-src/algorithm/CeresOptimizer.cc
-src/algorithm/fusionsystem.cc
+src/System.cc
+src/fusionsystem.cc
 )
 
 

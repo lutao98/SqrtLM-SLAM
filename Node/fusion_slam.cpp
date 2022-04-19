@@ -1,5 +1,5 @@
-#include "algorithm/FusionSystem.h"
-#include "algorithm/lidarOdom.h"
+#include "FusionSystem.h"
+//#include "lidarOdom.h"
 #include "utils/KalmanFilter.h"
 #include "utils/tic_toc.h"
 int main( int argc, char** argv)

@@ -24,6 +24,7 @@
 #include "utils/CircularBuffer.h"
 #include "data_structure/point_types.h"
 
+// 单独跑激光可以用到
 namespace art {
 using namespace std;
 using namespace lom;

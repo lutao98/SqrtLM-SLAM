@@ -281,14 +281,14 @@ Frame::Frame(const cv::Mat &imGray, pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_i
     // 获取sigma^2的倒数
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
+    // 提取lidar线面特征
     TicToc sum_timer;
     std::thread loopthread(&Frame::lidarProcess, this);
-
     TicToc visual_timer;
     /// 处理图像
     {
     Depthimg_ = cv::Mat(imGray.rows, imGray.cols, CV_64F, cv::Scalar::all(0));
-    //将lidar先验通过外参转换到深度图
+    // 将lidar先验通过外参转换到深度图
     int depthpixel_num=0;
     for(int i = 0; i < lidar_inputPtr->size(); i++){
 
@@ -457,7 +457,7 @@ Frame::Frame(const cv::Mat &imGray, pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_i
 
     loopthread.join();
 
-    // calibration
+    // calibration 统一到相机坐标系
     pcl::transformPointCloud(corner_points_sharp_, corner_points_sharp_, extrinsicMatrix);
     pcl::transformPointCloud(surface_points_flat_, surface_points_flat_, extrinsicMatrix);
     pcl::transformPointCloud(corner_points_less_sharp_, corner_points_less_sharp_, extrinsicMatrix);
@@ -469,7 +469,7 @@ Frame::Frame(const cv::Mat &imGray, pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_i
 
 }
 
-
+// 虚拟化线束信息，如果有现成的线束信息，效果会比较好
 void Frame::CalculateRingAndTime(const PointICloud &all_cloud_in, PointIRTCloud &all_cloud_out) {
 
   //激光雷达线数初始化为64
@@ -544,7 +544,7 @@ void Frame::CalculateRingAndTime(const PointICloud &all_cloud_in, PointIRTCloud 
             << "    min angle:" << min_angle << std::endl;
 }
 
-
+// 转到深度图
 void Frame::PointToImage(const PointIRTCloud &all_cloud_in) {
   auto &points = all_cloud_in.points;
   size_t all_cloud_size = points.size();
@@ -650,7 +650,7 @@ void Frame::PrepareRing_corner(const PointIRTCloud &scan) {
   //预处理掩膜
   scan_ring_mask_.resize(scan_size);
   scan_ring_mask_.assign(scan_size, 0);
-  // // 记录每个scan的结束index，忽略后n个点，开始和结束处的点云容易产生不闭合的“接缝”，对提取edge feature不利
+  // 记录每个scan的结束index，忽略后n个点，开始和结束处的点云容易产生不闭合的“接缝”，对提取edge feature不利
   for (size_t i = 0 + lidarconfig_->num_curvature_regions_corner; i + lidarconfig_->num_curvature_regions_corner < scan_size; ++i) {
     const PointIRT &p_prev = scan[i - 1];
     const PointIRT &p_curr = scan[i];
@@ -829,8 +829,6 @@ void Frame::PrepareSubregion_flat(const PointIRTCloud &scan, const size_t idx_st
   }
   sort(curvature_idx_pairs_.begin(), curvature_idx_pairs_.end());
 }
-
-
 
 
 void Frame::ExtractFeaturePoints() {
@@ -1239,7 +1237,6 @@ void Frame::ExtractFeaturePoints() {
   // 处理完毕
 
 } // ExtractFeaturePoints
-
 
 
 
