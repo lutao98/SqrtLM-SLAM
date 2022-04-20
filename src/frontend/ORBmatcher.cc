@@ -35,7 +35,7 @@
 #include <opencv2/features2d/features2d.hpp>
 
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
-#include "FrontEnd/ORBmatcher.h"
+#include "frontend/ORBmatcher.h"
 
 using namespace std;
 

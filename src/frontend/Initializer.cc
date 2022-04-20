@@ -29,9 +29,9 @@
  * 
  */
 
-#include "FrontEnd/Initializer.h"
+#include "frontend/Initializer.h"
 #include "Thirdparty/DBoW2/DUtils/Random.h"
-#include "FrontEnd/ORBmatcher.h"
+#include "frontend/ORBmatcher.h"
 
 // 这里使用到了多线程的加速技术
 #include <thread>

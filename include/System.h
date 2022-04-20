@@ -32,14 +32,14 @@
 #include <opencv2/core/core.hpp>
 
 // 下面则是本ORB-SLAM2系统中的其他模块
-#include "FrontEnd/Tracking.h"
-#include "data_structure/Map.h"
-#include "BackEnd/LocalMapping.h"
-#include "BackEnd/LoopClosing.h"
+#include "frontend/Tracking.h"
+#include "backend/LocalMapping.h"
+#include "backend/LoopClosing.h"
+#include "backend/g2oOptimizer.h"
 #include "algorithm/KeyFrameDatabase.h"
+#include "data_structure/Map.h"
 #include "data_structure/ORBVocabulary.h"
 #include "utils/lidarconfig.h"
-#include "BackEnd/g2oOptimizer.h"
 
 struct SLAMresult{
 

@@ -37,7 +37,7 @@
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "data_structure/ORBVocabulary.h"
-#include "FrontEnd/ORBextractor.h"
+#include "frontend/ORBextractor.h"
 #include "data_structure/Frame.h"
 #include "data_structure/point_types.h"
 #include "algorithm/KeyFrameDatabase.h"

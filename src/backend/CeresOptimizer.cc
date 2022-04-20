@@ -26,7 +26,7 @@
 #include "utils/Converter.h"
 #include "utils/cameraFactor.h"
 
-#include "BackEnd/CeresOptimizer.h"
+#include "backend/CeresOptimizer.h"
 
 #include <mutex>
 

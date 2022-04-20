@@ -18,7 +18,7 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "BackEnd/Optimizer.h"
+#include "backend/Optimizer.h"
 
 
 namespace ORB_SLAM2

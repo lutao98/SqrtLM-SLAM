@@ -31,9 +31,9 @@
 
 #include "algorithm/Sim3Solver.h"
 #include "utils/Converter.h"
-#include "BackEnd/LoopClosing.h"
-#include "BackEnd/Optimizer.h"
-#include "FrontEnd/ORBmatcher.h"
+#include "backend/LoopClosing.h"
+#include "backend/Optimizer.h"
+#include "frontend/ORBmatcher.h"
 
 #include <mutex>
 #include <thread>

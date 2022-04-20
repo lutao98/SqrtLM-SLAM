@@ -32,7 +32,7 @@
 #include <pcl/common/transforms.h>
 #include "utils/Converter.h"
 #include "utils/tic_toc.h"
-#include "BackEnd/g2oOptimizer.h"
+#include "backend/g2oOptimizer.h"
 #include "Thirdparty/g2o/g2o/core/block_solver.h"
 #include "Thirdparty/g2o/g2o/core/optimization_algorithm_levenberg.h"
 #include "Thirdparty/g2o/g2o/core/robust_kernel_impl.h"

@@ -33,13 +33,13 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include "FrontEnd/Tracking.h"
-#include "FrontEnd/ORBmatcher.h"
-#include "FrontEnd/Initializer.h"
+#include "frontend/Tracking.h"
+#include "frontend/ORBmatcher.h"
+#include "frontend/Initializer.h"
 #include "utils/Converter.h"
 #include "utils/tic_toc.h"
 #include "data_structure/Map.h"
-#include "BackEnd/Optimizer.h"
+#include "backend/Optimizer.h"
 #include "algorithm/PnPsolver.h"
 
 #include <iostream>

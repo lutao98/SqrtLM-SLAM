@@ -43,14 +43,14 @@
 #include <pcl/filters/filter.h>
 //#include <pcl/filters/impl/voxel_grid.hpp>
 #include "data_structure/Map.h"
-#include "BackEnd/LocalMapping.h"
-#include "BackEnd/LoopClosing.h"
+#include "backend/LocalMapping.h"
+#include "backend/LoopClosing.h"
 #include "data_structure/Frame.h"
 #include "data_structure/ORBVocabulary.h"
 #include "data_structure/point_types.h"
 #include "algorithm/KeyFrameDatabase.h"
-#include "FrontEnd/ORBextractor.h"
-#include "FrontEnd/Initializer.h"
+#include "frontend/ORBextractor.h"
+#include "frontend/Initializer.h"
 #include "System.h"
 
 #include <mutex>

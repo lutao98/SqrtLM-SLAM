@@ -28,10 +28,10 @@
 * You should have received a copy of the GNU General Public License
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "FrontEnd/ORBmatcher.h"
-#include "BackEnd/LocalMapping.h"
-#include "BackEnd/LoopClosing.h"
-#include "BackEnd/Optimizer.h"
+#include "frontend/ORBmatcher.h"
+#include "backend/LocalMapping.h"
+#include "backend/LoopClosing.h"
+#include "backend/Optimizer.h"
 
 #include <mutex>
 #include <ros/ros.h>
