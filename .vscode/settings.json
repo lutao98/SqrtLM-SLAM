@@ -8,6 +8,7 @@
         "/opt/ros/kinetic/lib/python2.7/dist-packages"
     ],
     "files.associations": {
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "iostream": "cpp"
     }
 }
