@@ -227,7 +227,7 @@ void LT_SLAM::FusionSystem::Visualization(){
   while(ros::ok()){
 
       if(frameNum_>view_framenum_){
-        if(view_framenum_==0){// 每次重启程序的时候marker不会重置
+        if(view_framenum_==0){  // 每次重启程序的时候marker不会重置，因为keyframe.lifetime = ros::Duration();
           for(int i=0;i<100;i++){
             visualization_msgs::Marker keyframe;
             keyframe.type = visualization_msgs::Marker::CUBE;
@@ -249,6 +249,36 @@ void LT_SLAM::FusionSystem::Visualization(){
           pcl::PointCloud<pcl::PointXYZRGB> lidar_color=*lidar_colorPtr_;
           SLAMresult result=SLAM_.getSLAMresult();
           mtx_.unlock();
+
+          //lidar的点云加上RGB显示，得放在GrayImg被加上框框之前
+          for(int i = 0; i < lidar_inputPtr_->size(); i++){
+
+              if(lidar_inputPtr_->points[i].x<1)  continue;
+
+              cv::Point2i pixel;
+              Eigen::Vector4d P_lidar(lidar_inputPtr_->points[i].x,
+                                      lidar_inputPtr_->points[i].y,
+                                      lidar_inputPtr_->points[i].z,
+                                      1);
+
+              Eigen::Vector3d z_P_uv = intrinsicMatrix_*extrinsicMatrix_*P_lidar;
+              Eigen::Vector3i P_uv = Eigen::Vector3i( int( z_P_uv[0]/z_P_uv[2] ), int( z_P_uv[1]/z_P_uv[2] ), 1 );
+        
+              if(P_uv[0] >= 0 && P_uv[1] >= 0 && P_uv[0]<=GrayImg.cols-1 && P_uv[1]<=GrayImg.rows-1){
+
+                  pixel.x = P_uv[0];
+                  pixel.y = P_uv[1];
+
+                  pcl::PointXYZRGB color_p;
+                  color_p._PointXYZRGB::x=lidar_inputPtr_->points[i].x;
+                  color_p._PointXYZRGB::y=lidar_inputPtr_->points[i].y;
+                  color_p._PointXYZRGB::z=lidar_inputPtr_->points[i].z;
+                  color_p._PointXYZRGB::b=GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[0];
+                  color_p._PointXYZRGB::g=GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[1];
+                  color_p._PointXYZRGB::r=GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[2];
+                  lidar_color.push_back(color_p);
+              }
+          }
 
           cv::Mat Depthimg=result.Depthimg_;
           cv::Mat Range_image=result.range_img_visual_;
@@ -290,6 +320,7 @@ void LT_SLAM::FusionSystem::Visualization(){
 
               Eigen::Matrix4d KFworldpose=extrinsicMatrix_.inverse()*(KF_cameraPose*extrinsicMatrix_);
 
+              // 显示轨迹
               geometry_msgs::PoseStamped this_pose_stamped;
               this_pose_stamped.pose.position.x = KFworldpose(0,3);
               this_pose_stamped.pose.position.y = KFworldpose(1,3);
@@ -328,7 +359,7 @@ void LT_SLAM::FusionSystem::Visualization(){
                   KeyFrameVisual_.markers.emplace_back(keyframe);
               }
 
-              //current frame
+              //current frame，绿色的
               if( std::distance(lit,lend)==1 ){
                   cur_worldpose=KFworldpose;
                   tf::Transform transform;
@@ -370,7 +401,6 @@ void LT_SLAM::FusionSystem::Visualization(){
                                                     1 );
                           Eigen::Vector4d invW=Eigen::Vector4d::Zero();
                           while(invW.x()<result.KP_depth_.at(count)){
-
                               invW=extrinsicMatrix_.inverse()*Eigen::Vector4d(normcoor.x(),normcoor.y(),normcoor.z(),1);
                               pcl::PointXYZ depthline_p;
                               depthline_p._PointXYZ::x=invW.x();
@@ -400,14 +430,14 @@ void LT_SLAM::FusionSystem::Visualization(){
                           cv::rectangle(GrayImg,pt3,pt4,cv::Scalar(0,255,255));
                           cv::circle(GrayImg,kp.pt,2,cv::Scalar(0,255,0),-1);
                       }
-                      if(depthline_visual)    lidar_color.push_back(color_p);
+                    //   if(depthline_visual)    lidar_color.push_back(color_p);  //特征点估计出来的深度点云，可显示用
 
                   }
               }
               count++;
           }
 
-
+          // 地图相关
           pcl::PointCloud<pcl::PointXYZ> map_pc;
           for(ORB_SLAM2::MapPoint* mp:result.map_){
               if(mp){
@@ -554,53 +584,3 @@ void LT_SLAM::FusionSystem::Visualization(){
       std::this_thread::sleep_for(dura);
   }
 }
-
-//void LT_SLAM::FusionSystem::DataConversion(const sensor_msgs::PointCloud2::ConstPtr &PointCloudMsg){
-
-//    std::lock_guard<mutex> lock(mtx_);
-
-//    lidar_inputPtr_.reset(new pcl::PointCloud<pcl::PointXYZI>);
-//    lidar_colorPtr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-//    pcl::fromROSMsg(*PointCloudMsg, *lidar_inputPtr_);
-
-//    std::string image_name = ImgFilePath_ + GetFrameStr(frameNum_) + ".png";
-
-//    curFrame_.GrayImg = cv::imread(image_name);
-//    curFrame_.Depthimg = cv::Mat(curFrame_.GrayImg.rows, curFrame_.GrayImg.cols, CV_64F, cv::Scalar::all(0));
-
-//    min_v_=10000;
-//    for(int i = 0; i < lidar_inputPtr_->size(); i++){
-
-//        if(lidar_inputPtr_->points[i].x<0)  continue;
-
-//        cv::Point2i pixel;
-//        Eigen::Vector4d P_lidar(lidar_inputPtr_->points[i].x,
-//                                lidar_inputPtr_->points[i].y,
-//                                lidar_inputPtr_->points[i].z,
-//                                1);
-
-//        Eigen::Vector3i P_uv = TransformProject(P_lidar);
-
-//        if(P_uv[0] >= 0 && P_uv[1] >= 0 && P_uv[0]<=curFrame_.GrayImg.cols-1 && P_uv[1]<=curFrame_.GrayImg.rows-1){
-
-//            pixel.x = P_uv[0];
-//            pixel.y = P_uv[1];
-
-//            if(pixel.y<min_v_) min_v_=pixel.y;
-
-//            if(lidar_inputPtr_->points[i].x>1){
-//                pcl::PointXYZRGB color_p;
-//                color_p._PointXYZRGB::x=lidar_inputPtr_->points[i].x;
-//                color_p._PointXYZRGB::y=lidar_inputPtr_->points[i].y;
-//                color_p._PointXYZRGB::z=lidar_inputPtr_->points[i].z;
-//                color_p._PointXYZRGB::b=curFrame_.GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[0];
-//                color_p._PointXYZRGB::g=curFrame_.GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[1];
-//                color_p._PointXYZRGB::r=curFrame_.GrayImg.at<cv::Vec3b>(P_uv[1],P_uv[0])[2];
-//                lidar_colorPtr_->push_back(color_p);
-
-//                curFrame_.Depthimg.at<double>(pixel.y,pixel.x)=(extrinsicMatrix_*P_lidar).z();
-//            }
-//        }
-//    }
-
-//}
