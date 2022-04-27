@@ -80,8 +80,6 @@ private:
     visualization_msgs::MarkerArray KeyFrameVisual_;
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_inputPtr_;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr lidar_colorPtr_;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr lidar_colorMapPtr_;
     pcl::VoxelGrid<pcl::PointXYZRGB> voxel_;
 
     cv::Mat Tcw_;
@@ -95,13 +93,6 @@ private:
     unsigned int view_framenum_ = 0;
 
     void callback(const sensor_msgs::PointCloud2::ConstPtr &PointCloudMsg);
-
-//    // 可修改
-//    Eigen::Vector3i TransformProject(const Eigen::Vector4d &P_lidar)
-//    {
-//        Eigen::Vector3d z_P_uv = intrinsicMatrix_*extrinsicMatrix_*P_lidar;
-//        return Eigen::Vector3i( int( z_P_uv[0]/z_P_uv[2] ), int( z_P_uv[1]/z_P_uv[2] ), 1 );
-//    }
 
     std::string GetFrameStr(unsigned int frame)
     {

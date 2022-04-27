@@ -2,7 +2,7 @@
 
 LT_SLAM::FusionSystem::FusionSystem(ros::NodeHandle &nh, cv::FileStorage &cfg):SLAM_(cfg["File.ORBvoc"],
                                                                                      cfg["File.KITTI"],
-                                                                                     ORB_SLAM2::System::RGBD,
+                                                                                     ORB_SLAM2::System::RGBD, //fusion
                                                                                      false)
 {
 
@@ -11,6 +11,7 @@ LT_SLAM::FusionSystem::FusionSystem(ros::NodeHandle &nh, cv::FileStorage &cfg):S
 
     std::cout << std::endl << "Loop Detection:" << loop_detection << std::endl << std::endl;
 
+    // 也可以改成多个sub，对应多传感器
     pointCloudSub_ = nh.subscribe("/velodyne_points", 1000 , &FusionSystem::callback, this);
 
     image_pub_ = nh.advertise<sensor_msgs::Image> ("/lidar_image", 1);
@@ -36,8 +37,6 @@ LT_SLAM::FusionSystem::FusionSystem(ros::NodeHandle &nh, cv::FileStorage &cfg):S
     lidar_local_map_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/lidar_local_map", 100);
 
     lidar_inputPtr_.reset(new pcl::PointCloud<pcl::PointXYZI>);
-    lidar_colorPtr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-    lidar_colorMapPtr_.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     string lidarconfig_strSettings = cfg["File.lidar_config"];
     cv::FileStorage lidarfSetting(lidarconfig_strSettings.c_str(), cv::FileStorage::READ);
@@ -56,7 +55,7 @@ LT_SLAM::FusionSystem::FusionSystem(ros::NodeHandle &nh, cv::FileStorage &cfg):S
     while(!fCalib.eof()){
         string s;
         getline(fCalib,s);
-        if(s.substr(0,2)=="P0"){
+        if(s.substr(0,2)=="P0"){   //可以根据具体哪一目改
             string P0=s.substr(4,s.size()-1);
             stringstream ss;
             ss << P0;
@@ -111,6 +110,7 @@ LT_SLAM::FusionSystem::FusionSystem(ros::NodeHandle &nh, cv::FileStorage &cfg):S
     }
     std::cout << std::endl << "timestamps has frame: " << vTimestamps_.size() << std::endl << std::endl;
 
+    // 一些对比path
     ifstream fGT;
     string strGTFile = cfg["File.Groundtruth"];
     fGT.open(strGTFile.c_str());
@@ -215,7 +215,7 @@ void LT_SLAM::FusionSystem::callback(const sensor_msgs::PointCloud2::ConstPtr &P
     std::cout << "-----------------------------------------------------------" << std::endl;
     std::cout << "[FusionSLAM]::SLAM耗时:" << slam_timer.toc() << " ms." << std::endl;
 
-    // 跑完了保存结果
+    // 跑完了保存结果 用evo对比的时候可以-as
     if(frameNum_==vTimestamps_.size())
         SLAM_.SaveTrajectoryKITTI("FusionSLAM.txt");
 }
@@ -246,7 +246,7 @@ void LT_SLAM::FusionSystem::Visualization(){
           view_framenum_=frameNum_;
           cv::Mat GrayImg=img_gray_.clone();
           pcl::PointCloud<pcl::PointXYZI> lidar_input=*lidar_inputPtr_;
-          pcl::PointCloud<pcl::PointXYZRGB> lidar_color=*lidar_colorPtr_;
+          pcl::PointCloud<pcl::PointXYZRGB> lidar_color;
           SLAMresult result=SLAM_.getSLAMresult();
           mtx_.unlock();
 

@@ -337,9 +337,9 @@ cv::Mat Tracking::GrabImageFusion(const cv::Mat &im,
                           mK,                     //相机内参矩阵
                           mDistCoef,              //相机的去畸变参数
                           mbf,                    //相机基线*相机焦距
-                          mThDepth,
+                          mThDepth,               //内外点区分深度阈值
                           mpSystem->getIntrinsicMatrix(),
-                          mpSystem->getExtrinsicMatrix());              //内外点区分深度阈值
+                          mpSystem->getExtrinsicMatrix());              
     Depthimg_=mCurrentFrame.getDepthimg();
     range_img_visual_=mCurrentFrame.getRangeImage();
     corner_points_sharp_=mCurrentFrame.getCornerPoints();
@@ -465,7 +465,6 @@ void Tracking::TrackFusion(){
             mState=LOST;
             std::cout << "[Tracking](4)::跟踪失败，系统重启！" << std::endl;
         }
-
 
         // Step 4：更新显示线程中的图像、特征点、地图点等信息
         UpdateViewer();

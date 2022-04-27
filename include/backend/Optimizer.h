@@ -30,6 +30,7 @@
 
 #include "CeresOptimizer.h"
 #include "g2oOptimizer.h"
+#include "myOptimizer.h"
 
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
@@ -41,6 +42,11 @@ class LoopClosing;
 class Optimizer
 {
 public:
+    enum eSolver{
+        CERES=0,
+        G2O=1,
+        MYOPT=2
+    };
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
                                  int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
                                  const bool bRobust = true);

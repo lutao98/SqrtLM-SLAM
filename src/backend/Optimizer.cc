@@ -23,7 +23,8 @@
 
 namespace ORB_SLAM2
 {
-bool is_use_ceres=false;
+    Optimizer::eSolver solver=Optimizer::G2O;
+    bool is_use_ceres=false;
 
 void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
@@ -47,10 +48,12 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 int Optimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_cloud_ptr,
                                 pcl::KdTreeFLANN<PointI>::Ptr kdtree_local_map, const lidarConfig* lidarconfig)
 {
-    if(is_use_ceres)
+    if(solver==Optimizer::CERES)
         return CeresOptimizer::PoseOptimization(pFrame);
-    else
+    else if(solver==Optimizer::G2O)
         return g2oOptimizer::PoseOptimization(pFrame, local_lidarmap_cloud_ptr, kdtree_local_map, lidarconfig);
+    else
+        ;
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, const lidarConfig* lidarconfig)
