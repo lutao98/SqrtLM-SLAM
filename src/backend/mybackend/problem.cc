@@ -33,8 +33,8 @@ void Problem::LogoutVectorSize() {
 
 Problem::Problem(ProblemType problemType) :
     problemType_(problemType) {
+    opetimize_level_ = 0;     //默认为0
     LogoutVectorSize();
-    verticies_marg_.clear();
 }
 
 Problem::~Problem() {
@@ -68,14 +68,12 @@ void Problem::AddOrderingSLAM(std::shared_ptr<myslam::backend::Vertex> v) {
 
 bool Problem::IsPoseVertex(std::shared_ptr<myslam::backend::Vertex> v) {
     string type = v->TypeInfo();
-    return type == string("VertexPose") ||
-            type == string("VertexSpeedBias");
+    return type == string("VertexPose");
 }
 
 bool Problem::IsLandmarkVertex(std::shared_ptr<myslam::backend::Vertex> v) {
     string type = v->TypeInfo();
-    return type == string("VertexPointXYZ") ||
-           type == string("VertexInverseDepth");
+    return type == string("VertexPointXYZ");
 }
 
 bool Problem::AddEdge(shared_ptr<Edge> edge) {
@@ -186,7 +184,7 @@ bool Problem::Solve(int iterations) {
             UpdateStates();
             // 判断当前步是否可行以及 LM 的 lambda 怎么更新, chi2 也计算一下
             oneStepSuccess = IsGoodStepInLM();
-            // 后续处理，
+            // 后续处理
             if (oneStepSuccess) {
                 // std::cout << " get one step success\n";
 

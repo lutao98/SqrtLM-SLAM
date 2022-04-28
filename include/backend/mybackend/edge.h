@@ -122,7 +122,9 @@ public:
 
     int OrderingId() const { return ordering_id_; }
 
-    void SetOrderingId(int id) { ordering_id_ = id; };
+    void SetOrderingId(int id) { ordering_id_ = id; }
+
+    void setLevel(int level) { level_ = level; }
 
 protected:
     unsigned long id_;  // edge id
@@ -134,6 +136,8 @@ protected:
     MatXX information_;             // 信息矩阵
     MatXX sqrt_information_;
     VecX observation_;              // 观测信息
+
+    int level_;                      // 该边的属性,可以选择具体优化某level的边集合
 
     LossFunction *lossfunction_;
 };

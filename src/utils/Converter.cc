@@ -242,7 +242,7 @@ cv::Mat Converter::toCvMat(const Eigen::Quaterniond& q, const Eigen::Vector3d &t
     Rot.copyTo(pose.rowRange(0, 3).colRange(0, 3));
     trans.copyTo(pose.rowRange(0, 3).col(3));
 
-    return pose;
+    return pose.clone();
 }
 
 void Converter::toEigenQT(const cv::Mat &M, Eigen::Quaterniond& q, Eigen::Vector3d& t){

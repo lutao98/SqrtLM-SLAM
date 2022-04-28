@@ -68,6 +68,10 @@ public:
     Vec2 cam_project(const Vec3 &trans_xyz) const;     //相机系三维点->归一化坐标->像素坐标
 
     void setLandmarkWorld(const Vec3 &landmark_world) { landmark_world_=landmark_world; }
+
+    void setCamIntrinsics(double fx, double fy, double cx, double cy){
+        fx_=fx; fy_=fy; cx_=cx; cy_=cy;
+    }
 private:
     // measurements
     Vec2 obs_;     // 像素平面坐标

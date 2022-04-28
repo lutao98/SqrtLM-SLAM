@@ -32,6 +32,8 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
+add_definitions(-w)  #忽略warning
+
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -132,6 +134,13 @@ src/backend/LoopClosing.cc
 src/backend/Optimizer.cc
 src/backend/g2oOptimizer.cc
 src/backend/CeresOptimizer.cc
+src/backend/myOptimizer.cc
+src/backend/mybackend/edge_reprojection.cc
+src/backend/mybackend/edge.cc
+src/backend/mybackend/loss_function.cc
+src/backend/mybackend/problem.cc
+src/backend/mybackend/vertex_pose.cc
+src/backend/mybackend/vertex.cc
 src/algorithm/KeyFrameDatabase.cc
 src/algorithm/Sim3Solver.cc
 src/algorithm/PnPsolver.cc

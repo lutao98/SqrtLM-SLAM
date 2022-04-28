@@ -7,6 +7,12 @@
 #include "data_structure/Frame.h"
 #include "LoopClosing.h"
 
+#include "backend/mybackend/backend.h"
+#include "backend/mybackend/vertex_point_xyz.h"
+#include "backend/mybackend/vertex_pose.h"
+#include "backend/mybackend/edge_reprojection.h"
+#include "backend/mybackend/loss_function.h"
+#include "backend/mybackend/problem.h"
 namespace ORB_SLAM2
 {
 

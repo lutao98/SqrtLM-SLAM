@@ -67,27 +67,9 @@ public:
      */
     bool Solve(int iterations = 10);
 
-    /// 边缘化一个frame和以它为host的landmark
-    bool Marginalize(std::shared_ptr<Vertex> frameVertex,
-                     const std::vector<std::shared_ptr<Vertex>> &landmarkVerticies);
+    void setOptimizeLevel(int opetimize_level) { opetimize_level_= opetimize_level; }
 
-    bool Marginalize(const std::shared_ptr<Vertex> frameVertex);
-    bool Marginalize(const std::vector<std::shared_ptr<Vertex> > frameVertex,int pose_dim);
-
-    MatXX GetHessianPrior(){ return H_prior_;}
-    VecX GetbPrior(){ return b_prior_;}
-    VecX GetErrPrior(){ return err_prior_;}
-    MatXX GetJtPrior(){ return Jt_prior_inv_;}
-
-    void SetHessianPrior(const MatXX& H){H_prior_ = H;}
-    void SetbPrior(const VecX& b){b_prior_ = b;}
-    void SetErrPrior(const VecX& b){err_prior_ = b;}
-    void SetJtPrior(const MatXX& J){Jt_prior_inv_ = J;}
-
-    void ExtendHessiansPriorSize(int dim);
-
-    //test compute prior
-    void TestComputePrior();
+    int getEdgeSize() {return edges_.size();}
 
 private:
 
@@ -117,17 +99,11 @@ private:
 
     void RollbackStates(); // 有时候 update 后残差会变大，需要退回去，重来
 
-    /// 计算并更新Prior部分
-    void ComputePrior();
-
     /// 判断一个顶点是否为Pose顶点
     bool IsPoseVertex(std::shared_ptr<Vertex> v);
 
     /// 判断一个顶点是否为landmark顶点
     bool IsLandmarkVertex(std::shared_ptr<Vertex> v);
-
-    /// 在新增顶点后，需要调整几个hessian的大小
-    void ResizePoseHessiansWhenAddingPose(std::shared_ptr<Vertex> v);
 
     /// 检查ordering是否正确
     bool CheckOrdering();
@@ -164,15 +140,6 @@ private:
     VecX b_;
     VecX delta_x_;
 
-    /// 先验部分信息
-    MatXX H_prior_;
-    VecX b_prior_;
-    VecX b_prior_backup_;
-    VecX err_prior_backup_;
-
-    MatXX Jt_prior_inv_;
-    VecX err_prior_;
-
     /// SBA的Pose部分
     MatXX H_pp_schur_;
     VecX b_pp_schur_;
@@ -198,12 +165,11 @@ private:
     std::map<unsigned long, std::shared_ptr<Vertex>> idx_pose_vertices_;        // 以ordering排序的pose顶点
     std::map<unsigned long, std::shared_ptr<Vertex>> idx_landmark_vertices_;    // 以ordering排序的landmark顶点
 
-    // verticies need to marg. <Ordering_id_, Vertex>
-    HashVertex verticies_marg_;
-
     bool bDebug = false;
     double t_hessian_cost_ = 0.0;
     double t_PCGsovle_cost_ = 0.0;
+
+    int opetimize_level_;     // 优化属性,在第opetimize_level_的边才构造约束,在多轮优化时可以用到
 };
 
 }
