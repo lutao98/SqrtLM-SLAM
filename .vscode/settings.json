@@ -54,6 +54,10 @@
         "tuple": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "strstream": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "string_view": "cpp"
     }
 }

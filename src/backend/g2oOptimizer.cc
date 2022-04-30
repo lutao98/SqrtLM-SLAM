@@ -397,7 +397,7 @@ int g2oOptimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
-    optimizer.setVerbose(false);
+    optimizer.setVerbose(false);    // 调试输出
 
     // 输入的帧中,有效的,参与优化过程的2D-3D点对
     int nInitialCorrespondences=0;

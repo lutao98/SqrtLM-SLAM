@@ -61,7 +61,7 @@ void Problem::AddOrderingSLAM(std::shared_ptr<myslam::backend::Vertex> v) {
     } else if (IsLandmarkVertex(v)) {
         v->SetOrderingId(ordering_landmarks_);
         ordering_landmarks_ += v->LocalDimension();
-        idx_landmark_vertices_.insert(pair<ulong, std::shared_ptr<Vertex>>(v->Id(), v));
+        idx_landmark_vertices_.insert(pair<ulong, std::shared_ptr<Vertex>>(v->Id(), v));  //从0开始,后面会改成接着pose的idx
     }
 }
 
@@ -92,7 +92,7 @@ bool Problem::AddEdge(shared_ptr<Edge> edge) {
 
 vector<shared_ptr<Edge>> Problem::GetConnectedEdges(std::shared_ptr<Vertex> vertex) {
     vector<shared_ptr<Edge>> edges;
-    auto range = vertexToEdge_.equal_range(vertex->Id());
+    auto range = vertexToEdge_.equal_range(vertex->Id());     //unordered_multimap
     for (auto iter = range.first; iter != range.second; ++iter) {
 
         // 并且这个edge还需要存在，而不是已经被remove了
@@ -162,14 +162,14 @@ bool Problem::Solve(int iterations) {
     while (!stop && (iter < iterations)) {
         std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_ << std::endl;
         bool oneStepSuccess = false;
-        int false_cnt = 0;
+        int false_cnt = 0;     //尝试正确增量delta_x的次数
         while (!oneStepSuccess && false_cnt < 10)  // 不断尝试 Lambda, 直到成功迭代一步  // basalt里面也会这样
         {
-            // setLambda
-            // AddLambdatoHessianLM();
+            // setLambda,这个lambda是在大H里面加,也可以再SC后的Hpp里面加
+            AddLambdatoHessianLM();
             // 第四步，解线性方程，加了lambda
             SolveLinearSystem();
-            // RemoveLambdaHessianLM();
+            RemoveLambdaHessianLM();
 
             // 优化退出条件1： delta_x_ 很小则退出
             // if (delta_x_.squaredNorm() <= 1e-6 || false_cnt > 10)
@@ -211,7 +211,7 @@ bool Problem::Solve(int iterations) {
         // if (sqrt(currentChi_) < 1e-15)
         if(last_chi_ - currentChi_ < 1e-5)
         {
-            std::cout << "sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
+            // std::cout << "sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
             stop = true;
         }
         last_chi_ = currentChi_;
@@ -287,13 +287,15 @@ void Problem::MakeHessian() {
     //#endif
     for (auto &edge: edges_) {
 
+        if(edge.second->getLevel()!=opetimize_level_) continue;    //只计算opetimize_level_的误差边,其他的算outlier
+
         // 取出每条边，也就是一次观测，计算雅可比和残差
         edge.second->ComputeResidual();
         edge.second->ComputeJacobians();
 
         // TODO:: robust cost
-        auto jacobians = edge.second->Jacobians();
-        auto verticies = edge.second->Verticies();   // 对应landmark和pose
+        auto jacobians = edge.second->Jacobians();   // vector,每个雅可比维度是 residual x vertex[i]
+        auto verticies = edge.second->Verticies();   // 重投影误差edge的话,对应landmark和pose的vertex
         assert(jacobians.size() == verticies.size());
         for (size_t i = 0; i < verticies.size(); ++i) {
             auto v_i = verticies[i];
@@ -370,6 +372,15 @@ void Problem::SolveLinearSystem() {
         // step1: schur marginalization --> Hpp, bpp
         int reserve_size = ordering_poses_;
         int marg_size = ordering_landmarks_;
+
+        if(marg_size == 0){    // 对于pose only optimization,不需要marg
+            TicToc t_linearsolver;
+            // std::cout << "pose optimization, marg size = 0" << std::endl;
+            delta_x_ = Hessian_.ldlt().solve(b_);
+            std::cout << " Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
+            return ;
+        }
+
         MatXX Hmm = Hessian_.block(reserve_size, reserve_size, marg_size, marg_size);
         MatXX Hpm = Hessian_.block(0, reserve_size, reserve_size, marg_size);
         MatXX Hmp = Hessian_.block(reserve_size, 0, marg_size, reserve_size);
@@ -392,10 +403,10 @@ void Problem::SolveLinearSystem() {
         // step2: solve Hpp * delta_x = bpp
         VecX delta_x_pp(VecX::Zero(reserve_size));
 
-        //这个lambda直接在S矩阵上加的
-        for (ulong i = 0; i < ordering_poses_; ++i) {
-            H_pp_schur_(i, i) += currentLambda_;              // LM Method
-        }
+        // //这个lambda直接在S矩阵上加的,可以测测有什么不一样
+        // for (ulong i = 0; i < ordering_poses_; ++i) {
+        //     H_pp_schur_(i, i) += currentLambda_;              // LM Method
+        // }
 
         // 求pose增量
         TicToc t_linearsolver;
@@ -408,7 +419,7 @@ void Problem::SolveLinearSystem() {
         VecX delta_x_ll(marg_size);
         delta_x_ll = Hmm_inv * (bmm - Hmp * delta_x_pp);
         delta_x_.tail(marg_size) = delta_x_ll;
-
+        
         std::cout << "schur time cost: "<< t_Hmminv.toc()<<std::endl;
     }
 
@@ -449,7 +460,7 @@ void Problem::ComputeLambdaInitLM() {
 
     currentChi_ *= 0.5;
 
-    stopThresholdLM_ = 1e-10 * currentChi_;          // 迭代条件为 误差下降 1e-6 倍
+    stopThresholdLM_ = 1e-10 * currentChi_;          // 迭代条件为 误差下降 1e-10 倍
 
     double maxDiagonal = 0;
     ulong size = Hessian_.cols();
@@ -461,7 +472,7 @@ void Problem::ComputeLambdaInitLM() {
     maxDiagonal = std::min(5e10, maxDiagonal);
     double tau = 1e-5;  // 1e-5
     currentLambda_ = tau * maxDiagonal;    // 取对角线元素最大值的tau倍
-//        std::cout << "currentLamba_: "<<maxDiagonal<<" "<<currentLambda_<<std::endl;
+//        std::cout << "currentLamba_: " << maxDiagona l<< " " << currentLambda_ << std::endl;
 }
 
 void Problem::AddLambdatoHessianLM() {

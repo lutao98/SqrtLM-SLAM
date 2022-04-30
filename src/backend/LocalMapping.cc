@@ -124,12 +124,12 @@ void LocalMapping::Run()
             {
                 // Local BA
                 // Step 6 当局部地图中的关键帧大于2个的时候进行局部地图的BA
-                if(mpMap->KeyFramesInMap()>2)
-                {
-                    // 注意这里的第二个参数是按地址传递的,当这里的 mbAbortBA 状态发生变化时，能够及时执行/停止BA
-                    std::cout << "[LocalMapping](4)::开始局部BA！优化关键帧和地图点！" << std::endl;
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, *lidar_config_);
-                }
+                // if(mpMap->KeyFramesInMap()>2)
+                // {
+                //     // 注意这里的第二个参数是按地址传递的,当这里的 mbAbortBA 状态发生变化时，能够及时执行/停止BA
+                //     std::cout << "[LocalMapping](4)::开始局部BA！优化关键帧和地图点！" << std::endl;
+                //     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, *lidar_config_);
+                // }
 
                 // Check redundant local Keyframes
                 // Step 7 检测并剔除当前帧相邻的关键帧中冗余的关键帧

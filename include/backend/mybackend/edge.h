@@ -126,6 +126,8 @@ public:
 
     void setLevel(int level) { level_ = level; }
 
+    int getLevel() { return level_; }
+
 protected:
     unsigned long id_;  // edge id
     int ordering_id_;   //edge id in problem

@@ -23,7 +23,7 @@
 
 namespace ORB_SLAM2
 {
-    Optimizer::eSolver solver=Optimizer::G2O;
+    Optimizer::eSolver solver=Optimizer::MYOPT;
     bool is_use_ceres=false;
 
 void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
@@ -53,7 +53,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_clo
     else if(solver==Optimizer::G2O)
         return g2oOptimizer::PoseOptimization(pFrame, local_lidarmap_cloud_ptr, kdtree_local_map, lidarconfig);
     else
-        ;
+        return MyOptimizer::PoseOptimization(pFrame);
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, const lidarConfig* lidarconfig)

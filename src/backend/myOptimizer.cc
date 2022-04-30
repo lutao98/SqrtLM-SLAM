@@ -58,9 +58,8 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
     Vec3 t;
     Converter::toEigenQT(pFrame->mTcw,q,t);
     Vec7 pose;
-    pose.head(3) = t;
-    pose.tail(4) = Vec4(q.x(),q.y(),q.z(),q.w());// q的初始化顺序wxyz，实际存储顺序xyzw
-    // pose.tail(4) = q;
+    pose.head<3>() = t;
+    pose.tail<4>() = Vec4(q.coeffs());// q的初始化顺序wxyz，实际存储顺序xyzw
     vSE3->SetParameters(pose);     // parameters: tx, ty, tz, qx, qy, qz, qw, 7 DoF
     vSE3->SetFixed(false);
     problem.AddVertex(vSE3);
@@ -106,7 +105,7 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
             // 设置相机内参
             e->setCamIntrinsics(pFrame->fx,pFrame->fy,pFrame->cx,pFrame->cy);
 
-            // 地图点的空间位置,作为迭代的初始值
+            // 地图点的世界坐标,根据vertex(pose)投影算预测值
             cv::Mat Pw = pMP->GetWorldPos();
             e->setLandmarkWorld(Vec3(Pw.at<float>(0),Pw.at<float>(1),Pw.at<float>(2)));
 
@@ -141,12 +140,8 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
 
         // 感觉这句话没必要加 每次迭代后应该更新顶点位姿 这里是固定了每次迭代顶点位姿的初始值
         // 感觉也可以加 因为每次迭代后外点被剔除了 优化结果会更好
-        Converter::toEigenQT(pFrame->mTcw,q,t);
-        Vec7 tq;
-        tq.head(3) = t;
-        tq.tail(4) = Vec4(q.x(),q.y(),q.z(),q.w());// q的初始化顺序wxyz，实际存储顺序xyzw
-        // pose.tail(4) = q;
-        vSE3->SetParameters(tq);     // parameters: tx, ty, tz, qx, qy, qz, qw, 7 DoF
+        vSE3->SetParameters(pose);     // parameters: tx, ty, tz, qx, qy, qz, qw, 7 DoF
+
         // 其实就是初始化优化器,这里的参数0就算是不填写,默认也是0,也就是只对level为0的边进行优化
         problem.setOptimizeLevel(0);
         // 开始优化，优化10次
@@ -192,15 +187,16 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
     // Recover optimized pose and return number of inliers
     // Step 5 得到优化后的当前帧的位姿
     // tx, ty, tz, qx, qy, qz, qw
+
     Vec7 tq = vSE3->Parameters();
     // q的初始化顺序wxyz，实际存储顺序xyzw
-    cv::Mat pose_cv = Converter::toCvMat( Qd(tq[6],tq[3],tq[4],tq[5]), Vec3(tq.head(3))); 
-    pFrame->SetPose(pose_cv);
+    cv::Mat update_pose = Converter::toCvMat( Qd(tq[6],tq[3],tq[4],tq[5]), Vec3(tq.head<3>())); 
+    pFrame->SetPose(update_pose);
 
     std::cout << "             ::PoseOptimization() 误差边数量:" << problem.getEdgeSize()
-              << "   此次优化位姿为: " << pose_cv.row(0) << std::endl
-              << "                                                                   " << pose_cv.row(1) << std::endl
-              << "                                                                   " << pose_cv.row(2) << std::endl;
+              << "   此次优化位姿为: " << update_pose.row(0) << std::endl
+              << "                                                                   " << update_pose.row(1) << std::endl
+              << "                                                                   " << update_pose.row(2) << std::endl;
 
     nBad=0;
     // 优化结束,开始遍历参与优化的每一条误差边(单目)

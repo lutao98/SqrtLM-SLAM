@@ -81,7 +81,7 @@ void EdgeReprojectionXYZ::ComputeJacobians() {
     jacobian_feature = -1.*invz * tmp * Qi.toRotationMatrix();   //Rcw
 
     // 这个要看李代数增量是旋转在前还是平移在前
-    // 目前是平移在前，但是g2o是旋转在前
+    // 目前是平移在前(Sophus::SE3d)，但是g2o是旋转在前(Sophus::SE3Quat)
     Mat26 jacobian_pose_i;
     jacobian_pose_i(0,0) = -invz *fx_;
     jacobian_pose_i(0,1) = 0;
@@ -150,22 +150,10 @@ void EdgeReprojectionPoseOnly::ComputeJacobians() {
     double invz = 1.0/pts_c[2];
     double invz_2 = invz*invz;
 
-    Mat23 tmp;
-    tmp(0,0) = fx_;
-    tmp(0,1) = 0;
-    tmp(0,2) = -x*invz*fx_;
-
-    tmp(1,0) = 0;
-    tmp(1,1) = fy_;
-    tmp(1,2) = -y*invz*fy_;
-
     // 注意正负，误差计算方式是观测-预测
 
-    Mat23 jacobian_feature;
-    jacobian_feature = -1.*invz * tmp * Qi.toRotationMatrix();   //Rcw
-
     // 这个要看李代数增量是旋转在前还是平移在前
-    // 目前是平移在前，但是g2o是旋转在前
+    // 目前是平移在前(Sophus::SE3d)，但是g2o是旋转在前(Sophus::SE3Quat)
     Mat26 jacobian_pose_i;
     jacobian_pose_i(0,0) = -invz *fx_;
     jacobian_pose_i(0,1) = 0;
@@ -180,21 +168,6 @@ void EdgeReprojectionPoseOnly::ComputeJacobians() {
     jacobian_pose_i(1,3) = (1+y*y*invz_2) *fy_;
     jacobian_pose_i(1,4) = -x*y*invz_2 *fy_;
     jacobian_pose_i(1,5) = -x*invz *fy_;
-
-    // 旋转在前
-    // jacobian_pose_i(0,0) =  x*y*invz_2 *fx_;
-    // jacobian_pose_i(0,1) = -(1+(x*x*invz_2)) *fx_;
-    // jacobian_pose_i(0,2) = y*invz *fx_;
-    // jacobian_pose_i(0,3) = -invz *fx_;
-    // jacobian_pose_i(0,4) = 0;
-    // jacobian_pose_i(0,5) = x*invz_2 *fx_;
-
-    // jacobian_pose_i(1,0) = (1+y*y*invz_2) *fy_;
-    // jacobian_pose_i(1,1) = -x*y*invz_2 *fy_;
-    // jacobian_pose_i(1,2) = -x*invz *fy_;
-    // jacobian_pose_i(1,3) = 0;
-    // jacobian_pose_i(1,4) = -invz *fy_;
-    // jacobian_pose_i(1,5) = y*invz_2 *fy_;
 
     jacobians_[0] = jacobian_pose_i;
 

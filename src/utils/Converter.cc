@@ -227,7 +227,7 @@ void Converter::toQuaternion(const cv::Mat &M, Eigen::Quaterniond& q) {
 }
 
 void Converter::toCvMat(const Eigen::Quaterniond& q, cv::Mat &M){
-    Eigen::Matrix3d matrix = q.matrix();
+    Eigen::Matrix3d matrix = q.toRotationMatrix();
     cv::eigen2cv(matrix, M);
 }
 
