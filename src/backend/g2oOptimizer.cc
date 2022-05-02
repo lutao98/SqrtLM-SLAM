@@ -638,42 +638,41 @@ int g2oOptimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_
 
       cv::Mat pose = Converter::toCvMat(vSE3->estimate());
       pFrame->SetPose(pose);
-
-      std::cout << "             ::PoseOptimization() 误差边数量:" << optimizer.activeEdges().size()
-                << "   此次优化位姿为: " << pose.row(0) << std::endl
-                << "                                                                   " << pose.row(1) << std::endl
-                << "                                                                   " << pose.row(2) << std::endl;
-
-      nBad=0;
-      // 优化结束,开始遍历参与优化的每一条误差边(单目)
-      for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
-      {
-          g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
-
-          const size_t idx = vnIndexEdgeMono[i];
-
-          // 如果这条误差边是来自于outlier
-          if(pFrame->mvbOutlier[idx])
-          {
-              e->computeError();
-          }
-
-          // 就是error*\Omega*error,表征了这个点的误差大小(考虑置信度以后)
-          const float chi2 = e->chi2();
-
-          if(chi2>5.991)
-          {
-              pFrame->mvbOutlier[idx]=true;
-              nBad++;
-          }
-          else
-          {
-              pFrame->mvbOutlier[idx]=false;
-          }
-
-      } // 对单目误差边的处理
     }
 
+    std::cout << "             ::PoseOptimization() 误差边数量:" << optimizer.activeEdges().size()
+            << "   此次优化位姿为: " << pose.row(0) << std::endl
+            << "                                                                   " << pose.row(1) << std::endl
+            << "                                                                   " << pose.row(2) << std::endl;
+
+    nBad=0;
+    // 优化结束,开始遍历参与优化的每一条误差边(单目)
+    for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
+    {
+        g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
+
+        const size_t idx = vnIndexEdgeMono[i];
+
+        // 如果这条误差边是来自于outlier
+        if(pFrame->mvbOutlier[idx])
+        {
+            e->computeError();
+        }
+
+        // 就是error*\Omega*error,表征了这个点的误差大小(考虑置信度以后)
+        const float chi2 = e->chi2();
+
+        if(chi2>5.991)
+        {
+            pFrame->mvbOutlier[idx]=true;
+            nBad++;
+        }
+        else
+        {
+            pFrame->mvbOutlier[idx]=false;
+        }
+
+    } // 对单目误差边的处理
 
     // 并且返回内点数目
     return nInitialCorrespondences-nBad;

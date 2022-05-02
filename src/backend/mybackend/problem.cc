@@ -8,9 +8,7 @@
 #include "utils/tic_toc.h"
 
 #ifdef USE_OPENMP
-
 #include <omp.h>
-
 #endif
 
 using namespace std;
@@ -34,6 +32,7 @@ void Problem::LogoutVectorSize() {
 Problem::Problem(ProblemType problemType) :
     problemType_(problemType) {
     opetimize_level_ = 0;     //默认为0
+    debug_output_ = false;
     LogoutVectorSize();
 }
 
@@ -160,7 +159,8 @@ bool Problem::Solve(int iterations) {
     int iter = 0;
     double last_chi_ = 1e20;
     while (!stop && (iter < iterations)) {
-        std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_ << std::endl;
+        if(debug_output_)
+            std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_ << std::endl;
         bool oneStepSuccess = false;
         int false_cnt = 0;     //尝试正确增量delta_x的次数
         while (!oneStepSuccess && false_cnt < 10)  // 不断尝试 Lambda, 直到成功迭代一步  // basalt里面也会这样
@@ -216,8 +216,9 @@ bool Problem::Solve(int iterations) {
         }
         last_chi_ = currentChi_;
     }
-    std::cout << "problem solve cost: " << t_solve.toc() << " ms" << std::endl;
-    std::cout << "makeHessian cost: " << t_hessian_cost_ << " ms" << std::endl;
+    if(debug_output_)
+        std::cout << "problem solve cost: " << t_solve.toc() << " ms" << std::endl
+                  << "makeHessian cost: " << t_hessian_cost_ << " ms" << std::endl;
     t_hessian_cost_ = 0.;
     return true;
 }
@@ -281,21 +282,26 @@ void Problem::MakeHessian() {
     MatXX H(MatXX::Zero(size, size));
     VecX b(VecX::Zero(size));
 
-    // TODO:: accelate, accelate, accelate
-    //#ifdef USE_OPENMP
-    //#pragma omp parallel for
-    //#endif
-    for (auto &edge: edges_) {
+    // accelate, accelate, accelate
+    #ifdef USE_OPENMP
+    omp_set_dynamic(1);
+    omp_set_num_threads(4);   // make H 占大概 1=>4/5 2=>2/3 3=>1/2+ 4=>1/2- 6=>1/2
+    #pragma omp parallel for      // 耗时增加?  可加num_threads(int)
+    #endif
 
-        if(edge.second->getLevel()!=opetimize_level_) continue;    //只计算opetimize_level_的误差边,其他的算outlier
+    for (int k=0; k<edges_.size(); k++) {    // openmp并行只能这么写,不能写!=,还是不太优雅
+        auto iter = edges_.begin();          // vector/deque/string 是随机迭代器,支持+n  [n]  <=操作
+        for(int j=0; j<k; j++) iter++;       // map/list/set 是双向迭代器 只支持++ !=    而stack/queue不支持迭代器
+
+        if(iter->second->getLevel()!=opetimize_level_) continue;    //只计算opetimize_level_的误差边,其他的算outlier
 
         // 取出每条边，也就是一次观测，计算雅可比和残差
-        edge.second->ComputeResidual();
-        edge.second->ComputeJacobians();
+        iter->second->ComputeResidual();
+        iter->second->ComputeJacobians();
 
         // TODO:: robust cost
-        auto jacobians = edge.second->Jacobians();   // vector,每个雅可比维度是 residual x vertex[i]
-        auto verticies = edge.second->Verticies();   // 重投影误差edge的话,对应landmark和pose的vertex
+        auto jacobians = iter->second->Jacobians();   // vector,每个雅可比维度是 residual x vertex[i]
+        auto verticies = iter->second->Verticies();   // 重投影误差edge的话,对应landmark和pose的vertex
         assert(jacobians.size() == verticies.size());
         for (size_t i = 0; i < verticies.size(); ++i) {
             auto v_i = verticies[i];
@@ -307,8 +313,8 @@ void Problem::MakeHessian() {
 
             // 鲁棒核函数会修改残差和信息矩阵，如果没有设置 robust cost function，就会返回原来的
             double drho;
-            MatXX robustInfo(edge.second->Information().rows(),edge.second->Information().cols());
-            edge.second->RobustInfo(drho,robustInfo);
+            MatXX robustInfo(iter->second->Information().rows(),iter->second->Information().cols());
+            iter->second->RobustInfo(drho,robustInfo);
 
             MatXX JtW = jacobian_i.transpose() * robustInfo;  // Jt×W
             for (size_t j = i; j < verticies.size(); ++j) {
@@ -330,10 +336,12 @@ void Problem::MakeHessian() {
                     H.block(index_j, index_i, dim_j, dim_i).noalias() += hessian.transpose();
                 }
             }
-            b.segment(index_i, dim_i).noalias() -= drho * jacobian_i.transpose()* edge.second->Information() * edge.second->Residual();
+            b.segment(index_i, dim_i).noalias() -= drho * jacobian_i.transpose()* iter->second->Information() * iter->second->Residual();
         }
 
     }
+
+
     Hessian_ = H;
     b_ = b;
     t_hessian_cost_ += t_h.toc();  //记录H构建的耗时
@@ -375,9 +383,9 @@ void Problem::SolveLinearSystem() {
 
         if(marg_size == 0){    // 对于pose only optimization,不需要marg
             TicToc t_linearsolver;
-            // std::cout << "pose optimization, marg size = 0" << std::endl;
             delta_x_ = Hessian_.ldlt().solve(b_);
-            std::cout << " Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
+            // if(debug_output_)
+                // std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
             return ;
         }
 
@@ -412,7 +420,8 @@ void Problem::SolveLinearSystem() {
         TicToc t_linearsolver;
         delta_x_pp =  H_pp_schur_.ldlt().solve(b_pp_schur_);//  SVec.asDiagonal() * svd.matrixV() * Ub;    
         delta_x_.head(reserve_size) = delta_x_pp;
-        std::cout << " Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
+        // if(debug_output_)
+            // std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
 
         // 利用pose增量反求出landmark增量
         // step3: solve Hmm * delta_x = bmm - Hmp * delta_x_pp;
@@ -420,7 +429,8 @@ void Problem::SolveLinearSystem() {
         delta_x_ll = Hmm_inv * (bmm - Hmp * delta_x_pp);
         delta_x_.tail(marg_size) = delta_x_ll;
         
-        std::cout << "schur time cost: "<< t_Hmminv.toc()<<std::endl;
+        if(debug_output_)
+            std::cout << "schur time cost: "<< t_Hmminv.toc()<<std::endl;
     }
 
 }

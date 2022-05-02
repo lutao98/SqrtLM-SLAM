@@ -40,13 +40,16 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
     // 自由度为2的卡方分布，显著性水平为0.05，对应的临界阈值5.991
     const double deltaMono = sqrt(5.991);
     // 自由度为3的卡方分布，显著性水平为0.05，对应的临界阈值7.815   
-    const double deltaStereo = sqrt(7.815); 
+    const double deltaStereo = sqrt(7.815);
+
+    // 核函数
     backend::LossFunction *lossfunction;
     lossfunction = new backend::CauchyLoss(deltaMono);
     //    lossfunction = new backend::TukeyLoss(1.0);
 
     // step1. 构建 problem
     backend::Problem problem(backend::Problem::ProblemType::SLAM_PROBLEM);
+    problem.setDebugOutput(false);       //调试输出:迭代 耗时等信息
 
     // 输入的帧中,有效的,参与优化过程的2D-3D点对
     int nInitialCorrespondences=0;
@@ -60,7 +63,7 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
     Vec7 pose;
     pose.head<3>() = t;
     pose.tail<4>() = Vec4(q.coeffs());// q的初始化顺序wxyz，实际存储顺序xyzw
-    vSE3->SetParameters(pose);     // parameters: tx, ty, tz, qx, qy, qz, qw, 7 DoF
+    vSE3->SetParameters(pose);        // parameters: tx, ty, tz, qx, qy, qz, qw, 7 DoF
     vSE3->SetFixed(false);
     problem.AddVertex(vSE3);
 
@@ -199,7 +202,7 @@ int MyOptimizer::PoseOptimization(Frame *pFrame)
               << "                                                                   " << update_pose.row(2) << std::endl;
 
     nBad=0;
-    // 优化结束,开始遍历参与优化的每一条误差边(单目)
+    // 优化结束,开始遍历参与优化的每一条误差边
     for(size_t i=0, iend=vpEdges.size(); i<iend; i++)
     {
         shared_ptr<backend::EdgeReprojectionPoseOnly> e = vpEdges[i];

@@ -71,6 +71,8 @@ public:
 
     int getEdgeSize() {return edges_.size();}
 
+    void setDebugOutput(bool debug) { debug_output_ = debug; }
+
 private:
 
     /// Solve的实现，解通用问题
@@ -170,6 +172,8 @@ private:
     double t_PCGsovle_cost_ = 0.0;
 
     int opetimize_level_;     // 优化属性,在第opetimize_level_的边才构造约束,在多轮优化时可以用到
+
+    bool debug_output_;
 };
 
 }
