@@ -16,10 +16,10 @@ namespace backend {
  * @return Vec2 归一化平面坐标
  */
 Vec2 project2d(const Vec3& v)  {
-  Vec2 res;
-  res(0) = v(0)/v(2);
-  res(1) = v(1)/v(2);
-  return res;
+    Vec2 res;
+    res(0) = v(0)/v(2);
+    res(1) = v(1)/v(2);
+    return res;
 }
 
 /*  
@@ -44,12 +44,25 @@ void EdgeReprojectionXYZ::ComputeResidual() {
 }
 
 Vec2 EdgeReprojectionXYZ::cam_project(const Vec3 &camera_xyz) const{
-  Vec2 proj = project2d(camera_xyz);   //归一化平面坐标
-  Vec2 res;                           //像素坐标
-  res[0] = proj[0]*fx_ + cx_;
-  res[1] = proj[1]*fy_ + cy_;
-  return res;
+    Vec2 proj = project2d(camera_xyz);   //归一化平面坐标
+    Vec2 res;                           //像素坐标
+    res[0] = proj[0]*fx_ + cx_;
+    res[1] = proj[1]*fy_ + cy_;
+    return res;
 }
+
+bool EdgeReprojectionXYZ::isDepthPositive(){
+
+    Vec3 pts_w = verticies_[0]->Parameters();
+    VecX pose_i = verticies_[1]->Parameters();              //Tcw
+
+    Qd Qi(pose_i[6], pose_i[3], pose_i[4], pose_i[5]);
+    Vec3 Pi = pose_i.head<3>();
+    Vec3 pts_c = Qi*pts_w + Pi;
+
+    return pts_c(2)>0.0;
+}
+
 
 void EdgeReprojectionXYZ::ComputeJacobians() {
 
@@ -129,11 +142,11 @@ void EdgeReprojectionPoseOnly::ComputeResidual() {
 }
 
 Vec2 EdgeReprojectionPoseOnly::cam_project(const Vec3 &camera_xyz) const{
-  Vec2 proj = project2d(camera_xyz);   //归一化平面坐标
-  Vec2 res;                           //像素坐标
-  res[0] = proj[0]*fx_ + cx_;
-  res[1] = proj[1]*fy_ + cy_;
-  return res;
+    Vec2 proj = project2d(camera_xyz);   //归一化平面坐标
+    Vec2 res;                           //像素坐标
+    res[0] = proj[0]*fx_ + cx_;
+    res[1] = proj[1]*fy_ + cy_;
+    return res;
 }
 
 void EdgeReprojectionPoseOnly::ComputeJacobians() {

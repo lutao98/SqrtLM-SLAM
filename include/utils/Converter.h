@@ -195,6 +195,10 @@ public:
     static void toSE3(const cv::Mat& mat, Sophus::SE3d& out);
     static void toSim3(const g2o::Sim3& gsim3, Sophus::Sim3d& out);
     static void toCvMat(const Sophus::SE3d& se3, cv::Mat& out);
+
+    // add for mybackend
+    static Eigen::Matrix<double, 7, 1> toEigenVecTQ(const cv::Mat &M);
+
 };
 
 }// namespace ORB_SLAM

@@ -37,6 +37,11 @@ public:
 
     Vec2 cam_project(const Vec3 & trans_xyz) const;     //相机系三维点->归一化坐标->像素坐标
 
+    void setCamIntrinsics(double fx, double fy, double cx, double cy){
+        fx_=fx; fy_=fy; cx_=cx; cy_=cy;
+    }
+
+    bool isDepthPositive();
 private:
     // measurements
     Vec2 obs_;     // 像素平面坐标,虽然基类里面有observation_,写到这里清楚一些

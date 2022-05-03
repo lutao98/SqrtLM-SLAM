@@ -50,6 +50,7 @@ int Optimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_clo
                                 pcl::KdTreeFLANN<PointI>::Ptr kdtree_local_map, const lidarConfig* lidarconfig)
 {
     TicToc op_tic;
+
     int inlier_num=0;
     if(solver==Optimizer::CERES)
         inlier_num = CeresOptimizer::PoseOptimization(pFrame);
@@ -57,17 +58,23 @@ int Optimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_clo
         inlier_num = g2oOptimizer::PoseOptimization(pFrame, local_lidarmap_cloud_ptr, kdtree_local_map, lidarconfig);
     else
         inlier_num = MyOptimizer::PoseOptimization(pFrame);
+
     std::cout << "             ::PoseOptimization() 耗时" << op_tic.toc() << " ms." << std::endl;
+
     return inlier_num;
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, const lidarConfig* lidarconfig)
 {
     TicToc op_tic;
-    if(is_use_ceres)
-        CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
-    else
-        g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
+
+    // if(solver==Optimizer::CERES)
+    //     CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
+    // else if(solver==Optimizer::G2O)
+    //     g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
+    // else
+        MyOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
+
     std::cout << "[LocalMapping](4)::LocalBundleAdjustment() 耗时" << op_tic.toc() << " ms." << std::endl;
 }
 

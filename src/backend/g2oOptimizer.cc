@@ -558,86 +558,86 @@ int g2oOptimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_
 
     // optimizer for lidar and visual
     if(local_lidarmap_cloud_ptr->size()>100){
-      int corner_correspondence = 0;
-      int plane_correspondence = 0;
+        int corner_correspondence = 0;
+        int plane_correspondence = 0;
 
-      cv::Mat pose_temp = Converter::toCvMat(vSE3->estimate()).inv();
-      Eigen::Matrix<double,4,4> eigenKFpose;
-      eigenKFpose << pose_temp.at<float>(0,0), pose_temp.at<float>(0,1), pose_temp.at<float>(0,2),pose_temp.at<float>(0,3),
-                     pose_temp.at<float>(1,0), pose_temp.at<float>(1,1), pose_temp.at<float>(1,2),pose_temp.at<float>(1,3),
-                     pose_temp.at<float>(2,0), pose_temp.at<float>(2,1), pose_temp.at<float>(2,2), pose_temp.at<float>(2,3),
-                     0,0,0,1;
-      Eigen::Affine3d curFSE3(eigenKFpose);
+        cv::Mat pose_temp = Converter::toCvMat(vSE3->estimate()).inv();
+        Eigen::Matrix<double,4,4> eigenKFpose;
+        eigenKFpose << pose_temp.at<float>(0,0), pose_temp.at<float>(0,1), pose_temp.at<float>(0,2),pose_temp.at<float>(0,3),
+                        pose_temp.at<float>(1,0), pose_temp.at<float>(1,1), pose_temp.at<float>(1,2),pose_temp.at<float>(1,3),
+                        pose_temp.at<float>(2,0), pose_temp.at<float>(2,1), pose_temp.at<float>(2,2), pose_temp.at<float>(2,3),
+                        0,0,0,1;
+        Eigen::Affine3d curFSE3(eigenKFpose);
 
-      std::vector<int> point_search_ind;
-      std::vector<float> point_search_sq_dis;
+        std::vector<int> point_search_ind;
+        std::vector<float> point_search_sq_dis;
 
-      if(lidarconfig->using_flat_point){
-        PointIRTCloud transformed_cloud;
-        pcl::transformPointCloud(pFrame->surface_points_flat_, transformed_cloud, curFSE3);
+        if(lidarconfig->using_flat_point){
+            PointIRTCloud transformed_cloud;
+            pcl::transformPointCloud(pFrame->surface_points_flat_, transformed_cloud, curFSE3);
 
-        for (size_t i = 0; i < transformed_cloud.size(); ++i) {
-          kdtree_local_map->nearestKSearch( PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis );
-          if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
-            Eigen::Vector3d curr_point(pFrame->surface_points_flat_.points[i].x,
-                                       pFrame->surface_points_flat_.points[i].y,
-                                       pFrame->surface_points_flat_.points[i].z);
+            for (size_t i = 0; i < transformed_cloud.size(); ++i) {
+                kdtree_local_map->nearestKSearch( PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis );
+                if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
+                    Eigen::Vector3d curr_point(pFrame->surface_points_flat_.points[i].x,
+                                            pFrame->surface_points_flat_.points[i].y,
+                                            pFrame->surface_points_flat_.points[i].z);
 
-            Eigen::Vector3d near_point(local_lidarmap_cloud_ptr->points[point_search_ind[0]].x,
-                                       local_lidarmap_cloud_ptr->points[point_search_ind[0]].y,
-                                       local_lidarmap_cloud_ptr->points[point_search_ind[0]].z);
+                    Eigen::Vector3d near_point(local_lidarmap_cloud_ptr->points[point_search_ind[0]].x,
+                                            local_lidarmap_cloud_ptr->points[point_search_ind[0]].y,
+                                            local_lidarmap_cloud_ptr->points[point_search_ind[0]].z);
 
-            Eigen::Vector3d curr_point_norm(pFrame->surface_points_flat_normal_.points[i].x,
-                                            pFrame->surface_points_flat_normal_.points[i].y,
-                                            pFrame->surface_points_flat_normal_.points[i].z);
+                    Eigen::Vector3d curr_point_norm(pFrame->surface_points_flat_normal_.points[i].x,
+                                                    pFrame->surface_points_flat_normal_.points[i].y,
+                                                    pFrame->surface_points_flat_normal_.points[i].z);
 
-            g2o::EdgeLidarFlatPoint* e = new g2o::EdgeLidarFlatPoint();
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-            e->setInformation(lidarconfig->flat_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
-            e->setRobustKernel(0);
-            e->curpoint_cameraframe_ = curr_point;
-            e->lastpoint_worldframe_ = near_point;
-            e->curr_point_norm = curr_point_norm;
-            optimizer.addEdge(e);
-            plane_correspondence++;
-          }
+                    g2o::EdgeLidarFlatPoint* e = new g2o::EdgeLidarFlatPoint();
+                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
+                    e->setInformation(lidarconfig->flat_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
+                    e->setRobustKernel(0);
+                    e->curpoint_cameraframe_ = curr_point;
+                    e->lastpoint_worldframe_ = near_point;
+                    e->curr_point_norm = curr_point_norm;
+                    optimizer.addEdge(e);
+                    plane_correspondence++;
+                }
+            }
         }
-      }
-      if(lidarconfig->using_sharp_point){
-        PointIRTCloud transformed_cloud;
-        pcl::transformPointCloud(pFrame->corner_points_sharp_, transformed_cloud, curFSE3);
-        for (size_t i = 0; i < transformed_cloud.size(); ++i) {
-          kdtree_local_map->nearestKSearch(PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis);
-          if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
-            Eigen::Vector3d curr_point(pFrame->corner_points_sharp_.points[i].x,
-                                       pFrame->corner_points_sharp_.points[i].y,
-                                       pFrame->corner_points_sharp_.points[i].z);
+        if(lidarconfig->using_sharp_point){
+            PointIRTCloud transformed_cloud;
+            pcl::transformPointCloud(pFrame->corner_points_sharp_, transformed_cloud, curFSE3);
+            for (size_t i = 0; i < transformed_cloud.size(); ++i) {
+                kdtree_local_map->nearestKSearch(PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis);
+                if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
+                    Eigen::Vector3d curr_point(pFrame->corner_points_sharp_.points[i].x,
+                                            pFrame->corner_points_sharp_.points[i].y,
+                                            pFrame->corner_points_sharp_.points[i].z);
 
-            Eigen::Vector3d near_point(local_lidarmap_cloud_ptr->points[point_search_ind[0]].x,
-                                       local_lidarmap_cloud_ptr->points[point_search_ind[0]].y,
-                                       local_lidarmap_cloud_ptr->points[point_search_ind[0]].z);
+                    Eigen::Vector3d near_point(local_lidarmap_cloud_ptr->points[point_search_ind[0]].x,
+                                            local_lidarmap_cloud_ptr->points[point_search_ind[0]].y,
+                                            local_lidarmap_cloud_ptr->points[point_search_ind[0]].z);
 
-            g2o::EdgeLidarCornerPoint* e = new g2o::EdgeLidarCornerPoint();
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-            e->setInformation(lidarconfig->corner_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
-            e->setRobustKernel(0);
-            e->curpoint_cameraframe_ = curr_point;
-            e->lastpoint_worldframe_ = near_point;
-            optimizer.addEdge(e);
-            corner_correspondence++;
-          }
+                    g2o::EdgeLidarCornerPoint* e = new g2o::EdgeLidarCornerPoint();
+                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
+                    e->setInformation(lidarconfig->corner_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
+                    e->setRobustKernel(0);
+                    e->curpoint_cameraframe_ = curr_point;
+                    e->lastpoint_worldframe_ = near_point;
+                    optimizer.addEdge(e);
+                    corner_correspondence++;
+                }
+            }
         }
-      }
-      std::cout << "             ::PoseOptimization() 平面点匹配数量:" << plane_correspondence
-                << "       角点匹配数量:" << corner_correspondence << std::endl;
+        std::cout << "             ::PoseOptimization() 平面点匹配数量:" << plane_correspondence
+                    << "       角点匹配数量:" << corner_correspondence << std::endl;
 
-      vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-//      // 开始优化，优化10次
-      optimizer.initializeOptimization(0);
-      optimizer.optimize(10);
+        vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+        // 开始优化，优化10次
+        optimizer.initializeOptimization(0);
+        optimizer.optimize(10);
 
-      cv::Mat pose = Converter::toCvMat(vSE3->estimate());
-      pFrame->SetPose(pose);
+        cv::Mat pose = Converter::toCvMat(vSE3->estimate());
+        pFrame->SetPose(pose);
     }
 
     std::cout << "             ::PoseOptimization() 误差边数量:" << optimizer.activeEdges().size()
@@ -735,7 +735,6 @@ void g2oOptimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* p
         // 取出该关键帧对应的地图点
         vector<MapPoint*> vpMPs = (*lit)->GetMapPointMatches();
         // 遍历这个关键帧观测到的每一个地图点，加入到lLocalMapPoints
-        int step1count=0;
         for(vector<MapPoint*>::iterator vit=vpMPs.begin(), vend=vpMPs.end(); vit!=vend; vit++)
         {
             MapPoint* pMP = *vit;
@@ -974,30 +973,10 @@ void g2oOptimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* p
         // Step 11：排除误差较大的outlier后再次优化 -- 第二阶段优化
         optimizer.initializeOptimization(0);
         optimizer.optimize(10);
-
-        // Check inlier observations
-        // Step 10 检测outlier，并设置下次不优化
-        // 遍历所有的单目误差边
-        for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
-        {
-            g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
-            MapPoint* pMP = vpMapPointEdgeMono[i];
-
-            if(pMP->isBad())
-                continue;
-
-            // 基于卡方检验计算出的阈值（假设测量有一个像素的偏差）
-            // 自由度为2的卡方分布，显著性水平为0.05，对应的临界阈值5.991
-            // 如果 当前边误差超出阈值，或者边链接的地图点深度值为负，说明这个边有问题，不优化了。
-            if(e->chi2()>5.991 || !e->isDepthPositive())
-            {
-                // 不优化
-                e->setLevel(1);
-            }
-        }
-
     }
 
+    // 加入激光点线约束
+    {   
     TicToc time;
     // update lidar local map
     PointIRTCloudPtr local_less_corner_map=PointIRTCloud().makeShared();
@@ -1053,87 +1032,89 @@ void g2oOptimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* p
     std::vector<float> point_search_sq_dis;
 
     if(lidarconfig->using_flat_point){
-      pcl::PointCloud<PointI>::Ptr lidarlocalmap_flat_ptr=PointICloud().makeShared();
+        pcl::PointCloud<PointI>::Ptr lidarlocalmap_flat_ptr=PointICloud().makeShared();
 
-      for(PointIRT PIRT:*local_less_flat_map){
-        lidarlocalmap_flat_ptr->push_back(PointIRT2PointI(PIRT));
-      }
-
-      pcl::KdTreeFLANN<PointI> kdtree_local_flatmap_;
-      kdtree_local_flatmap_.setInputCloud(lidarlocalmap_flat_ptr);
-
-      PointIRTCloud transformed_cloud;
-      pcl::transformPointCloud(pKF->surface_points_less_flat_, transformed_cloud, curFSE3);
-
-      for (size_t i = 0; i < transformed_cloud.size(); ++i) {
-        kdtree_local_flatmap_.nearestKSearch( PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis );
-        if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
-          Eigen::Vector3d curr_point(pKF->surface_points_less_flat_.points[i].x,
-                                     pKF->surface_points_less_flat_.points[i].y,
-                                     pKF->surface_points_less_flat_.points[i].z);
-
-          Eigen::Vector3d near_point(lidarlocalmap_flat_ptr->points[point_search_ind[0]].x,
-                                     lidarlocalmap_flat_ptr->points[point_search_ind[0]].y,
-                                     lidarlocalmap_flat_ptr->points[point_search_ind[0]].z);
-
-          Eigen::Vector3d curr_point_norm(pKF->surface_points_less_flat_normal_.points[i].x,
-                                          pKF->surface_points_less_flat_normal_.points[i].y,
-                                          pKF->surface_points_less_flat_normal_.points[i].z);
-
-          g2o::EdgeLidarFlatPoint* e = new g2o::EdgeLidarFlatPoint();
-          e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
-          e->setInformation(lidarconfig->flat_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
-          e->setRobustKernel(0);
-          e->curpoint_cameraframe_ = curr_point;
-          e->lastpoint_worldframe_ = near_point;
-          e->curr_point_norm = curr_point_norm;
-          optimizer.addEdge(e);
-          plane_correspondence++;
+        for(PointIRT PIRT:*local_less_flat_map){
+            lidarlocalmap_flat_ptr->push_back(PointIRT2PointI(PIRT));
         }
-      }
+
+        pcl::KdTreeFLANN<PointI> kdtree_local_flatmap_;
+        kdtree_local_flatmap_.setInputCloud(lidarlocalmap_flat_ptr);
+
+        PointIRTCloud transformed_cloud;
+        pcl::transformPointCloud(pKF->surface_points_less_flat_, transformed_cloud, curFSE3);
+
+        for (size_t i = 0; i < transformed_cloud.size(); ++i) {
+            kdtree_local_flatmap_.nearestKSearch( PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis );
+            if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
+            Eigen::Vector3d curr_point(pKF->surface_points_less_flat_.points[i].x,
+                                        pKF->surface_points_less_flat_.points[i].y,
+                                        pKF->surface_points_less_flat_.points[i].z);
+
+            Eigen::Vector3d near_point(lidarlocalmap_flat_ptr->points[point_search_ind[0]].x,
+                                        lidarlocalmap_flat_ptr->points[point_search_ind[0]].y,
+                                        lidarlocalmap_flat_ptr->points[point_search_ind[0]].z);
+
+            Eigen::Vector3d curr_point_norm(pKF->surface_points_less_flat_normal_.points[i].x,
+                                            pKF->surface_points_less_flat_normal_.points[i].y,
+                                            pKF->surface_points_less_flat_normal_.points[i].z);
+
+            g2o::EdgeLidarFlatPoint* e = new g2o::EdgeLidarFlatPoint();
+            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+            e->setInformation(lidarconfig->flat_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
+            e->setRobustKernel(0);
+            e->curpoint_cameraframe_ = curr_point;
+            e->lastpoint_worldframe_ = near_point;
+            e->curr_point_norm = curr_point_norm;
+            optimizer.addEdge(e);
+            plane_correspondence++;
+            }
+        }
     }
 
     if(lidarconfig->using_sharp_point){
 
-      pcl::PointCloud<PointI>::Ptr lidarlocalmap_corner_ptr=PointICloud().makeShared();
-      for(PointIRT PIRT:*local_less_corner_map){
-        lidarlocalmap_corner_ptr->push_back(PointIRT2PointI(PIRT));
-      }
-      pcl::KdTreeFLANN<PointI> kdtree_local_cornermap_;
-      kdtree_local_cornermap_.setInputCloud(lidarlocalmap_corner_ptr);
-
-      PointIRTCloud transformed_cloud;
-      pcl::transformPointCloud(pKF->corner_points_less_sharp_, transformed_cloud, curFSE3);
-      for (size_t i = 0; i < transformed_cloud.size(); ++i) {
-        kdtree_local_cornermap_.nearestKSearch(PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis);
-        if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
-          Eigen::Vector3d curr_point(pKF->corner_points_less_sharp_.points[i].x,
-                                     pKF->corner_points_less_sharp_.points[i].y,
-                                     pKF->corner_points_less_sharp_.points[i].z);
-
-          Eigen::Vector3d near_point(lidarlocalmap_corner_ptr->points[point_search_ind[0]].x,
-                                     lidarlocalmap_corner_ptr->points[point_search_ind[0]].y,
-                                     lidarlocalmap_corner_ptr->points[point_search_ind[0]].z);
-
-          g2o::EdgeLidarCornerPoint* e = new g2o::EdgeLidarCornerPoint();
-          e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
-          e->setInformation(lidarconfig->corner_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
-          e->setRobustKernel(0);
-          e->curpoint_cameraframe_ = curr_point;
-          e->lastpoint_worldframe_ = near_point;
-          optimizer.addEdge(e);
-          corner_correspondence++;
+        pcl::PointCloud<PointI>::Ptr lidarlocalmap_corner_ptr=PointICloud().makeShared();
+        for(PointIRT PIRT:*local_less_corner_map){
+            lidarlocalmap_corner_ptr->push_back(PointIRT2PointI(PIRT));
         }
-      }
+        pcl::KdTreeFLANN<PointI> kdtree_local_cornermap_;
+        kdtree_local_cornermap_.setInputCloud(lidarlocalmap_corner_ptr);
+
+        PointIRTCloud transformed_cloud;
+        pcl::transformPointCloud(pKF->corner_points_less_sharp_, transformed_cloud, curFSE3);
+        for (size_t i = 0; i < transformed_cloud.size(); ++i) {
+            kdtree_local_cornermap_.nearestKSearch(PointIRT2PointI(transformed_cloud[i]), 1, point_search_ind, point_search_sq_dis);
+            if (point_search_sq_dis[0] < lidarconfig->distance_sq_threshold) {
+            Eigen::Vector3d curr_point(pKF->corner_points_less_sharp_.points[i].x,
+                                        pKF->corner_points_less_sharp_.points[i].y,
+                                        pKF->corner_points_less_sharp_.points[i].z);
+
+            Eigen::Vector3d near_point(lidarlocalmap_corner_ptr->points[point_search_ind[0]].x,
+                                        lidarlocalmap_corner_ptr->points[point_search_ind[0]].y,
+                                        lidarlocalmap_corner_ptr->points[point_search_ind[0]].z);
+
+            g2o::EdgeLidarCornerPoint* e = new g2o::EdgeLidarCornerPoint();
+            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+            e->setInformation(lidarconfig->corner_optimized_weight*Eigen::Matrix<double, 1, 1>::Identity());
+            e->setRobustKernel(0);
+            e->curpoint_cameraframe_ = curr_point;
+            e->lastpoint_worldframe_ = near_point;
+            optimizer.addEdge(e);
+            corner_correspondence++;
+            }
+        }
     }
     std::cout << "                 ::平面点匹配数量:" << plane_correspondence
               << "       角点匹配数量:" << corner_correspondence ;
 
-      // Tight coupling optimization
+    // Tight coupling optimization
 
     optimizer.initializeOptimization(0);
     optimizer.optimize(20);
     std::cout << "    额外的激光紧耦合耗时:" << time.toc() << std::endl;
+    
+    }
 
     vector<pair<KeyFrame*,MapPoint*> > vToErase;
     vToErase.reserve(vpEdgesMono.size());

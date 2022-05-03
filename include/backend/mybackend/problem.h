@@ -73,6 +73,8 @@ public:
 
     void setDebugOutput(bool debug) { debug_output_ = debug; }
 
+    void setForceStopFlag(bool *flag) { forceStopFlag_ = flag; }
+
 private:
 
     /// Solve的实现，解通用问题
@@ -130,6 +132,8 @@ private:
     /// PCG 迭代线性求解器
     VecX PCGSolver(const MatXX &A, const VecX &b, int maxIter);
 
+    bool terminate() {return forceStopFlag_ ? (*forceStopFlag_) : false; }
+
     double currentLambda_;
     double currentChi_;
     double stopThresholdLM_;    // LM 迭代退出阈值条件
@@ -167,6 +171,8 @@ private:
     std::map<unsigned long, std::shared_ptr<Vertex>> idx_pose_vertices_;        // 以ordering排序的pose顶点
     std::map<unsigned long, std::shared_ptr<Vertex>> idx_landmark_vertices_;    // 以ordering排序的landmark顶点
 
+    std::vector<int> vLandmark_id_,edges_id_;
+
     bool bDebug = false;
     double t_hessian_cost_ = 0.0;
     double t_PCGsovle_cost_ = 0.0;
@@ -174,6 +180,8 @@ private:
     int opetimize_level_;     // 优化属性,在第opetimize_level_的边才构造约束,在多轮优化时可以用到
 
     bool debug_output_;
+
+    bool *forceStopFlag_;     // 外界设置的停止优化标志
 };
 
 }

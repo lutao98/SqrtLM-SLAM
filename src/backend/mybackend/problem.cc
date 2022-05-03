@@ -33,6 +33,7 @@ Problem::Problem(ProblemType problemType) :
     problemType_(problemType) {
     opetimize_level_ = 0;     //默认为0
     debug_output_ = false;
+    forceStopFlag_=nullptr;
     LogoutVectorSize();
 }
 
@@ -61,6 +62,7 @@ void Problem::AddOrderingSLAM(std::shared_ptr<myslam::backend::Vertex> v) {
         v->SetOrderingId(ordering_landmarks_);
         ordering_landmarks_ += v->LocalDimension();
         idx_landmark_vertices_.insert(pair<ulong, std::shared_ptr<Vertex>>(v->Id(), v));  //从0开始,后面会改成接着pose的idx
+        vLandmark_id_.emplace_back(v->Id());
     }
 }
 
@@ -86,6 +88,9 @@ bool Problem::AddEdge(shared_ptr<Edge> edge) {
     for (auto &vertex: edge->Verticies()) {
         vertexToEdge_.insert(pair<ulong, shared_ptr<Edge>>(vertex->Id(), edge));
     }
+
+    edges_id_.emplace_back(edge->Id());  //方便查询
+
     return true;
 }
 
@@ -158,18 +163,18 @@ bool Problem::Solve(int iterations) {
     bool stop = false;
     int iter = 0;
     double last_chi_ = 1e20;
-    while (!stop && (iter < iterations)) {
+    while ( !stop && (iter < iterations) && !terminate() ) {
         if(debug_output_)
             std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_ << std::endl;
         bool oneStepSuccess = false;
         int false_cnt = 0;     //尝试正确增量delta_x的次数
         while (!oneStepSuccess && false_cnt < 10)  // 不断尝试 Lambda, 直到成功迭代一步  // basalt里面也会这样
         {
-            // setLambda,这个lambda是在大H里面加,也可以再SC后的Hpp里面加
+            // setLambda,这个lambda是在大H里面加,也可以再SC后的Hpp里面加(这样计算次数少,也不用减)
             AddLambdatoHessianLM();
             // 第四步，解线性方程，加了lambda
             SolveLinearSystem();
-            RemoveLambdaHessianLM();
+            RemoveLambdaHessianLM();    //因为不能保证当前lambda迭代一定成功,所以要减去
 
             // 优化退出条件1： delta_x_ 很小则退出
             // if (delta_x_.squaredNorm() <= 1e-6 || false_cnt > 10)
@@ -256,6 +261,14 @@ void Problem::SetOrdering() {
         }
     }
 
+    // std::cout << "verticies_ size = " << verticies_.size() << std::endl
+    //           << "pose size = " << idx_pose_vertices_.size() << std::endl
+    //           << "landmark size = " << idx_landmark_vertices_.size() << std::endl
+    //           << "edge size = " << edges_.size() << std::endl   
+    //           << "ordering_generic_ = " << ordering_generic_ << std::endl    
+    //           << "ordering_poses_ = " << ordering_poses_ << std::endl    
+    //           << "ordering_landmarks_ = " << ordering_landmarks_ << std::endl  ; 
+
 //    CHECK_EQ(CheckOrdering(), true);
 }
 
@@ -277,31 +290,31 @@ bool Problem::CheckOrdering() {
 
 void Problem::MakeHessian() {
     TicToc t_h;
-    // 直接构造大的 H 矩阵
+
+    // 直接构造大的 H 矩阵,如果是4000*4000,大概耗时30ms,而fill才5ms,copy也是30ms
     ulong size = ordering_generic_;
     MatXX H(MatXX::Zero(size, size));
     VecX b(VecX::Zero(size));
-
     // accelate, accelate, accelate
     #ifdef USE_OPENMP
     omp_set_dynamic(1);
     omp_set_num_threads(4);   // make H 占大概 1=>4/5 2=>2/3 3=>1/2+ 4=>1/2- 6=>1/2
     #pragma omp parallel for      // 耗时增加?  可加num_threads(int)
     #endif
+    for (int k=0; k<edges_id_.size(); k++) {    // openmp并行只能这么写,不能写!=,还是不太优雅
+        std::shared_ptr<Edge> e=edges_[edges_id_[k]];
+        // auto iter = edges_.begin();          // vector/deque/string 是随机迭代器,支持+n  [n]  <=操作
+        // for(int j=0; j<k; j++) iter++;       // map/list/set 是双向迭代器 只支持++ !=    而stack/queue不支持迭代器
 
-    for (int k=0; k<edges_.size(); k++) {    // openmp并行只能这么写,不能写!=,还是不太优雅
-        auto iter = edges_.begin();          // vector/deque/string 是随机迭代器,支持+n  [n]  <=操作
-        for(int j=0; j<k; j++) iter++;       // map/list/set 是双向迭代器 只支持++ !=    而stack/queue不支持迭代器
-
-        if(iter->second->getLevel()!=opetimize_level_) continue;    //只计算opetimize_level_的误差边,其他的算outlier
+        if(e->getLevel()!=opetimize_level_) continue;    //只计算opetimize_level_的误差边,其他的算outlier
 
         // 取出每条边，也就是一次观测，计算雅可比和残差
-        iter->second->ComputeResidual();
-        iter->second->ComputeJacobians();
+        e->ComputeResidual();
+        e->ComputeJacobians();
 
         // TODO:: robust cost
-        auto jacobians = iter->second->Jacobians();   // vector,每个雅可比维度是 residual x vertex[i]
-        auto verticies = iter->second->Verticies();   // 重投影误差edge的话,对应landmark和pose的vertex
+        auto jacobians = e->Jacobians();   // vector,每个雅可比维度是 residual x vertex[i]
+        auto verticies = e->Verticies();   // 重投影误差edge的话,对应landmark和pose的vertex
         assert(jacobians.size() == verticies.size());
         for (size_t i = 0; i < verticies.size(); ++i) {
             auto v_i = verticies[i];
@@ -313,8 +326,8 @@ void Problem::MakeHessian() {
 
             // 鲁棒核函数会修改残差和信息矩阵，如果没有设置 robust cost function，就会返回原来的
             double drho;
-            MatXX robustInfo(iter->second->Information().rows(),iter->second->Information().cols());
-            iter->second->RobustInfo(drho,robustInfo);
+            MatXX robustInfo(e->Information().rows(),e->Information().cols());
+            e->RobustInfo(drho,robustInfo);
 
             MatXX JtW = jacobian_i.transpose() * robustInfo;  // Jt×W
             for (size_t j = i; j < verticies.size(); ++j) {
@@ -336,17 +349,16 @@ void Problem::MakeHessian() {
                     H.block(index_j, index_i, dim_j, dim_i).noalias() += hessian.transpose();
                 }
             }
-            b.segment(index_i, dim_i).noalias() -= drho * jacobian_i.transpose()* iter->second->Information() * iter->second->Residual();
+            b.segment(index_i, dim_i).noalias() -= drho * jacobian_i.transpose()* e->Information() * e->Residual();
         }
 
     }
 
-
-    Hessian_ = H;
+    Hessian_ = H;                  //如果H比较大,copy也耗时
     b_ = b;
     t_hessian_cost_ += t_h.toc();  //记录H构建的耗时
 
-    delta_x_ = VecX::Zero(size);  // initial delta_x = 0_n;
+    delta_x_ = VecX::Zero(size);   // initial delta_x = 0_n;
 
     // 把H画出来
     // cv::Mat HImage=cv::Mat::zeros(Hessian_.rows(),Hessian_.cols(),CV_8UC1);
@@ -384,26 +396,31 @@ void Problem::SolveLinearSystem() {
         if(marg_size == 0){    // 对于pose only optimization,不需要marg
             TicToc t_linearsolver;
             delta_x_ = Hessian_.ldlt().solve(b_);
-            // if(debug_output_)
-                // std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
+            // if(debug_output_)   std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
             return ;
         }
 
-        MatXX Hmm = Hessian_.block(reserve_size, reserve_size, marg_size, marg_size);
+        // 下面耗时以marg_size为4000为例
+        MatXX Hmm = Hessian_.block(reserve_size, reserve_size, marg_size, marg_size);   // copy耗时(marg_size比较大),大概35ms
+
+        // Hpm大概零点几,bpp更少
         MatXX Hpm = Hessian_.block(0, reserve_size, reserve_size, marg_size);
         MatXX Hmp = Hessian_.block(reserve_size, 0, marg_size, reserve_size);
         VecX bpp = b_.segment(0, reserve_size);
         VecX bmm = b_.segment(reserve_size, marg_size);
 
         // Hmm 是对角线矩阵，它的求逆可以直接为对角线块分别求逆，如果是逆深度，对角线块为1维的，则直接为对角线的倒数，这里可以加速
+        // 因为marg_size比较大,构造也很耗时,大概30ms
         MatXX Hmm_inv(MatXX::Zero(marg_size, marg_size));
-        // TODO:: use openMP
+
+        // 这个地方不怎么耗时,大概1ms
         for (auto landmarkVertex : idx_landmark_vertices_) {
             int idx = landmarkVertex.second->OrderingId() - reserve_size;
             int size = landmarkVertex.second->LocalDimension();
             Hmm_inv.block(idx, idx, size, size) = Hmm.block(idx, idx, size, size).inverse();
         }
 
+        // 大概10ms
         MatXX tempH = Hpm * Hmm_inv;
         H_pp_schur_ = Hessian_.block(0, 0, ordering_poses_, ordering_poses_) - tempH * Hmp;
         b_pp_schur_ = bpp - tempH * bmm;
@@ -411,7 +428,7 @@ void Problem::SolveLinearSystem() {
         // step2: solve Hpp * delta_x = bpp
         VecX delta_x_pp(VecX::Zero(reserve_size));
 
-        // //这个lambda直接在S矩阵上加的,可以测测有什么不一样
+        // // 这个lambda直接在S矩阵上加的,可以测测有什么不一样,H纬度比较大
         // for (ulong i = 0; i < ordering_poses_; ++i) {
         //     H_pp_schur_(i, i) += currentLambda_;              // LM Method
         // }
@@ -420,10 +437,9 @@ void Problem::SolveLinearSystem() {
         TicToc t_linearsolver;
         delta_x_pp =  H_pp_schur_.ldlt().solve(b_pp_schur_);//  SVec.asDiagonal() * svd.matrixV() * Ub;    
         delta_x_.head(reserve_size) = delta_x_pp;
-        // if(debug_output_)
-            // std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
+        // if(debug_output_)    std::cout << "      Linear Solver Time Cost: " << t_linearsolver.toc() << std::endl;
 
-        // 利用pose增量反求出landmark增量
+        // 利用pose增量反求出landmark增量,大概5ms
         // step3: solve Hmm * delta_x = bmm - Hmp * delta_x_pp;
         VecX delta_x_ll(marg_size);
         delta_x_ll = Hmm_inv * (bmm - Hmp * delta_x_pp);
