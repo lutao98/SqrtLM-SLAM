@@ -927,7 +927,7 @@ void g2oOptimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* p
             return;
         }
 
-    // Step 9 开始优化。分成两个阶段
+    // Step 9 开始优化,分成两个阶段
     // 第一阶段优化
     optimizer.initializeOptimization();
     // 迭代5次
@@ -1171,7 +1171,8 @@ void g2oOptimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* p
         g2o::SE3Quat SE3quat = vSE3->estimate();
         pKFi->SetPose(Converter::toCvMat(SE3quat));
         if(lit==lLocalKeyFrames.begin()){
-            std::cout << "                 ::局部BA结束，最新关键帧ID:" << pKFi->mnId << std::endl
+            std::cout << "                 ::g2oLocalBundleAdjustment() 误差边数量:" << optimizer.activeEdges().size() << std::endl
+                      << "                 ::局部BA结束，最新关键帧ID:" << pKFi->mnId << std::endl
                       << "                 ::最新关键帧位姿:" << pKFi->GetPose().row(0)  << std::endl
                       << "                                  " << pKFi->GetPose().row(1)  << std::endl
                       << "                                  " << pKFi->GetPose().row(2)  << std::endl;

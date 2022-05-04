@@ -330,10 +330,12 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
     // Setup optimizer
     // step 4 构建 problem
     backend::Problem problem(backend::Problem::ProblemType::SLAM_PROBLEM);
+    problem.setStorageMode(backend::Problem::StorageMode::GENERIC_MODE);
+    problem.setDrawHessian(false);
     problem.setDebugOutput(true);       //调试输出:迭代 耗时等信息
 
     // 外界设置的停止优化标志
-    // 可能在 Tracking::NeedNewKeyFrame() 里置位,指针随时变
+    // 可能在 Tracking::NeedNewKeyFrame() 里置位,指针的值随时变
     if(pbStopFlag)
         problem.setForceStopFlag(pbStopFlag);
 
@@ -358,9 +360,6 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
         id2vPose[pKFi->mnId] = vPose;
     }
 
-    std::cout << "lLocalKeyFrames.size=" << lLocalKeyFrames.size() << " "<< id2vPose.size() << std::endl;
-
-
     // Set Fixed KeyFrame vertices
     // Step  6 添加不优化的位姿顶点：Pose of Fixed KeyFrame，注意这里调用了vFixPose->setFixed(true)
     // 不优化为啥也要添加？回答：为了增加约束信息
@@ -375,8 +374,8 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
         vFixPose->SetFixed(true);
         problem.AddVertex(vFixPose);
 
+        id2vPose[pKFi->mnId] = vFixPose;
     }
-    std::cout << "lFixedCameras.size=" << lFixedCameras.size() << std::endl;
 
     // Set MapPoint vertices
     // Step  7 添加待优化的3D地图点顶点
@@ -437,6 +436,7 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
 
                 // 权重为特征点所在图像金字塔的层数的倒数
                 const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+
                 e->SetInformation(Eigen::Matrix2d::Identity()*invSigma2);
                 // 在这里使用了鲁棒核函数
                 e->SetLossFunction(lossfunction);
@@ -452,8 +452,6 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
         } // 遍历所有观测到当前地图点的关键帧
     } // 遍历所有的局部地图中的地图点
 
-    std::cout << "vpEdges.size=" << vpEdges.size() << std::endl;
-
 
     // 开始BA前再次确认是否有外部请求停止优化，因为这个变量是引用传递，会随外部变化
     // 可能在 Tracking::NeedNewKeyFrame(), mpLocalMapper->InsertKeyFrame 里置位
@@ -463,7 +461,7 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
             return;
         }
     
-    // Step 9 开始优化。分成两个阶段
+    // Step 9 开始优化,分成两个阶段
     // 第一阶段优化
     problem.setOptimizeLevel(0);
     // 迭代5次
@@ -500,7 +498,7 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
                 e->setLevel(1);
             }
             // 第二阶段优化的时候就属于精求解了,所以就不使用核函数
-            e->SetLossFunction(nullptr);
+            // e->SetLossFunction(nullptr);         // 记得改回去
         }
 
         // Optimize again without the outliers
@@ -567,7 +565,8 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
 
         pKFi->SetPose(update_pose);
         if(lit==lLocalKeyFrames.begin()){
-            std::cout << "                 ::局部BA结束，最新关键帧ID:" << pKFi->mnId << std::endl
+            std::cout << "                 ::myLocalBundleAdjustment() 误差边数量:" << problem.getEdgeSize() << std::endl
+                      << "                 ::局部BA结束，最新关键帧ID:" << pKFi->mnId << std::endl
                       << "                 ::最新关键帧位姿:" << pKFi->GetPose().row(0)  << std::endl
                       << "                                  " << pKFi->GetPose().row(1)  << std::endl
                       << "                                  " << pKFi->GetPose().row(2)  << std::endl;

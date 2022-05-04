@@ -10,6 +10,8 @@
 namespace myslam {
 namespace backend {
 
+extern unsigned long global_edge_id;
+
 class Vertex;
 
 /**
