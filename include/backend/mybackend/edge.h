@@ -10,6 +10,8 @@
 namespace myslam {
 namespace backend {
 
+extern unsigned long global_edge_id;
+
 class Vertex;
 
 /**
@@ -122,18 +124,24 @@ public:
 
     int OrderingId() const { return ordering_id_; }
 
-    void SetOrderingId(int id) { ordering_id_ = id; };
+    void SetOrderingId(int id) { ordering_id_ = id; }
+
+    void setLevel(int level) { level_ = level; }
+
+    int getLevel() { return level_; }
 
 protected:
     unsigned long id_;  // edge id
     int ordering_id_;   //edge id in problem
     std::vector<std::string> verticies_types_;  // 各顶点类型信息，用于debug
-    std::vector<std::shared_ptr<Vertex>> verticies_; // 该边对应的顶点
+    std::vector<std::shared_ptr<Vertex>> verticies_; // 该边对应的顶点，多态表现
     VecX residual_;                 // 残差
     std::vector<MatXX> jacobians_;  // 雅可比，每个雅可比维度是 residual x vertex[i]
     MatXX information_;             // 信息矩阵
     MatXX sqrt_information_;
     VecX observation_;              // 观测信息
+
+    int level_;                      // 该边的属性,可以选择具体优化某level的边集合
 
     LossFunction *lossfunction_;
 };

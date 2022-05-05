@@ -24,6 +24,8 @@ Edge::Edge(int residual_dimension, int num_verticies,
     information_ = information;
 
     lossfunction_ = NULL;
+
+    level_=0;
 //    cout<<"Edge construct residual_dimension="<<residual_dimension
 //            << ", num_verticies="<<num_verticies<<", id_="<<id_<<endl;
 }

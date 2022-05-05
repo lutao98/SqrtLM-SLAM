@@ -227,7 +227,7 @@ void Converter::toQuaternion(const cv::Mat &M, Eigen::Quaterniond& q) {
 }
 
 void Converter::toCvMat(const Eigen::Quaterniond& q, cv::Mat &M){
-    Eigen::Matrix3d matrix = q.matrix();
+    Eigen::Matrix3d matrix = q.toRotationMatrix();
     cv::eigen2cv(matrix, M);
 }
 
@@ -242,7 +242,7 @@ cv::Mat Converter::toCvMat(const Eigen::Quaterniond& q, const Eigen::Vector3d &t
     Rot.copyTo(pose.rowRange(0, 3).colRange(0, 3));
     trans.copyTo(pose.rowRange(0, 3).col(3));
 
-    return pose;
+    return pose.clone();
 }
 
 void Converter::toEigenQT(const cv::Mat &M, Eigen::Quaterniond& q, Eigen::Vector3d& t){
@@ -271,6 +271,19 @@ void Converter::toCvMat(const Sophus::SE3d& se3, cv::Mat& out){
 void Converter::toSim3(const g2o::Sim3& gsim3, Sophus::Sim3d& out) {
     out = Sophus::Sim3d(gsim3.rotation(), gsim3.translation());
     out.setScale(gsim3.scale());
+}
+
+// 返回 backend::VertexPose 参数类型
+Eigen::Matrix<double, 7, 1> Converter::toEigenVecTQ(const cv::Mat &M){
+    Eigen::Matrix3d rotationMatrix;
+    cv::cv2eigen(M.rowRange(0,3).colRange(0,3), rotationMatrix);
+    Eigen::Quaterniond q = Eigen::Quaterniond(rotationMatrix);
+    Eigen::Vector3d t;
+    cv::cv2eigen(M.rowRange(0,3).col(3), t);
+    Eigen::Matrix<double, 7, 1> tq;
+    tq.head<3>() = t;
+    tq.tail<4>() = Eigen::Vector4d(q.coeffs());// q的初始化顺序wxyz，实际存储顺序xyzw
+    return tq;
 }
 
 } //namespace ORB_SLAM

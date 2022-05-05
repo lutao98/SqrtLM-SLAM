@@ -27,8 +27,6 @@
 #include "data_structure/Frame.h"
 #include "LoopClosing.h"
 
-#include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
-
 namespace ORB_SLAM2
 {
 

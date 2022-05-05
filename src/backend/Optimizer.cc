@@ -23,7 +23,9 @@
 
 namespace ORB_SLAM2
 {
-bool is_use_ceres=false;
+    Optimizer::eSolver solver=Optimizer::G2O;
+    // Optimizer::eSolver solver=Optimizer::MYOPT;
+    bool is_use_ceres=false;
 
 void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
@@ -47,18 +49,33 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 int Optimizer::PoseOptimization(Frame *pFrame, PointICloudPtr local_lidarmap_cloud_ptr,
                                 pcl::KdTreeFLANN<PointI>::Ptr kdtree_local_map, const lidarConfig* lidarconfig)
 {
-    if(is_use_ceres)
-        return CeresOptimizer::PoseOptimization(pFrame);
+    TicToc op_tic;
+
+    int inlier_num=0;
+    if(solver==Optimizer::CERES)
+        inlier_num = CeresOptimizer::PoseOptimization(pFrame);
+    else if(solver==Optimizer::G2O)
+        inlier_num = g2oOptimizer::PoseOptimization(pFrame, local_lidarmap_cloud_ptr, kdtree_local_map, lidarconfig);
     else
-        return g2oOptimizer::PoseOptimization(pFrame, local_lidarmap_cloud_ptr, kdtree_local_map, lidarconfig);
+        inlier_num = MyOptimizer::PoseOptimization(pFrame);
+
+    std::cout << "             ::PoseOptimization() 耗时" << op_tic.toc() << " ms." << std::endl;
+
+    return inlier_num;
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, const lidarConfig* lidarconfig)
 {
-    if(is_use_ceres)
-        CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
-    else
-        g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
+    TicToc op_tic;
+
+    // if(solver==Optimizer::CERES)
+    //     CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
+    // else if(solver==Optimizer::G2O)
+    //     g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
+    // else
+        MyOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
+
+    std::cout << "[LocalMapping](4)::LocalBundleAdjustment() 耗时" << op_tic.toc() << " ms." << std::endl;
 }
 
 

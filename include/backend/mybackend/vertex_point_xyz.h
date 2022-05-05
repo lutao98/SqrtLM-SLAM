@@ -7,7 +7,7 @@ namespace myslam {
 namespace backend {
 
 /**
- * @brief 以xyz形式参数化的顶点
+ * @brief 世界坐标系下的xyz形式参数化顶点
  */
 class VertexPointXYZ : public Vertex {
 public:
