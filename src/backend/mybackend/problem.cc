@@ -111,6 +111,7 @@ bool Problem::Solve(int iterations) {
 
         if(debug_output_)
             std::cout << "iter: " << iter << " , chi= " << currentChi_ << " , Lambda= " << currentLambda_ << std::endl;
+
         bool oneStepSuccess = false;
         int false_cnt = 0;     //尝试正确增量delta_x的次数
 
@@ -186,7 +187,7 @@ void Problem::SetOrdering() {
     ordering_generic_ = 0;
     ordering_landmarks_ = 0;
 
-    // 先分开统计pose和landmark的idx，然后把landmark的idx加上pose的数量(StorageMode::GENERIC_MODE)
+    // 先分开统计pose和landmark的idx，然后把landmark的idx加上pose的数量
     // Note:: verticies_ 是 map 类型的, 顺序是按照 id 号排序的
     for (auto vertex: verticies_) {
         ordering_generic_ += vertex.second->LocalDimension();  // 所有的优化变量总维数
@@ -199,7 +200,6 @@ void Problem::SetOrdering() {
     }
 
     if (problemType_ == ProblemType::SLAM_PROBLEM) {
-        if(storageMode_ == StorageMode::GENERIC_MODE){
             // 这里要把 landmark 的 ordering 加上 pose 的数量，就保持了 landmark 在后,而 pose 在前
             ulong all_pose_dimension = ordering_poses_;
             for (auto landmarkVertex : idx_landmark_vertices_) {
@@ -207,9 +207,6 @@ void Problem::SetOrdering() {
                     landmarkVertex.second->OrderingId() + all_pose_dimension
                 );
             }
-        }else{
-            // 如果是稠密的存储方式,Hll是单独管理的,则不需要
-        }
     }
 
     if(storageMode_ == StorageMode::DENSE_MODE){
@@ -217,7 +214,11 @@ void Problem::SetOrdering() {
         Hll_.reserve( idx_landmark_vertices_.size() );
     }
 
-//    CHECK_EQ(CheckOrdering(), true);
+    if(debug_output_)    
+        std::cout << "Hessian size:" << ordering_generic_ 
+                  << "  Hpp:" << ordering_poses_ 
+                  << "  Hll:" << ordering_landmarks_ << std::endl;
+//    assert(CheckOrdering());
 }
 
 
@@ -247,7 +248,7 @@ void Problem::MakeHessian() {
     if(storageMode_ == StorageMode::GENERIC_MODE){    // 这种稀疏的存储方式在构造和拷贝大矩阵时会耗时
 
         // 直接构造大的 H 矩阵,如果是4000*4000,大概耗时30ms,而fill才5ms,copy也是30ms
-        MatXX H(MatXX::Zero(size, size));
+        Hessian_ = MatXX::Zero(size, size);
 
         // accelate, accelate, accelate
         #ifdef USE_OPENMP
@@ -306,17 +307,15 @@ void Problem::MakeHessian() {
                     MatXX hessian = JtW * jacobian_j;   // Jt×J  并且算上robust
 
                     // 所有的信息矩阵叠加起来
-                    H.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;    // noalias避免生成中间量,从而加速
+                    Hessian_.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;    // noalias避免生成中间量,从而加速
                     if (j != i) {
                         // 对称的下三角
-                        H.block(index_j, index_i, dim_j, dim_i).noalias() += hessian.transpose();
+                        Hessian_.block(index_j, index_i, dim_j, dim_i).noalias() += hessian.transpose();
                     }
                 }
                 b_.segment(index_i, dim_i).noalias() -= drho * jacobian_i.transpose()* e->Information() * e->Residual();
             }
         }
-
-        Hessian_ = H;                  // 如果H比较大,copy也耗时
 
         // 把H画出来
         if(draw_hessian_){
@@ -330,21 +329,22 @@ void Problem::MakeHessian() {
             cv::waitKey();
         }
 
-    }else{  // 这种稠密存储方式在存Hll时避免了存储大量的零,从而计算和构造拷贝时都会快
+    }else{   // 这种稠密存储方式在存Hll时避免了存储大量的零,从而计算和构造拷贝时都会快
 
-        // | Hpp Hpl |
-        // | Hlp Hll |
-        Hpp_ = MatXX::Zero(ordering_poses_, ordering_poses_);
-        Hpl_ = MatXX::Zero(ordering_poses_, ordering_landmarks_);
+        int landmark_size = idx_landmark_vertices_.size();
+        ulong pose_dim = ordering_poses_, landmarks_dim = ordering_landmarks_;
 
-        int pose_size = idx_pose_vertices_.size(), landmark_size = idx_landmark_vertices_.size();
+        // | Hpp Hpl | |bp|
+        // | Hlp Hll | |bl|
+        Hpp_ = MatXX::Zero(pose_dim, pose_dim);
+        Hpl_ = MatXX::Zero(pose_dim, landmarks_dim);
 
         if(Hll_.empty()){
             Hll_.resize( landmark_size, Mat33::Zero() );
         }else{                                              //不重新申请空间,而是直接赋值
             Mat33 zero(Mat33::Zero());
             for(Mat33 &hll:Hll_){
-                hll=zero;
+                hll.noalias() = zero;
             }
         }
 
@@ -363,7 +363,7 @@ void Problem::MakeHessian() {
 
             assert(jacobians.size() == verticies.size());
 
-            for (size_t i = 0; i < verticies.size(); ++i) {
+            for (size_t i = 0; i < verticies.size(); ++i) {   // 注意是landmark在前
 
                 auto v_i = verticies[i];
 
@@ -396,16 +396,16 @@ void Problem::MakeHessian() {
                     
                     // Hpp Hpl
                     // Hlp Hll
-                    if( IsPoseVertex(v_i) && IsPoseVertex(v_j) )
+                    if( IsPoseVertex(v_i) && IsPoseVertex(v_j) )                             // Hpp
                     { 
-                        Hpp_.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;   // Hpp
-                    }else if( IsPoseVertex(v_i)&&IsLandmarkVertex(v_j) )
+                        Hpp_.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;               
+                    }else if( IsLandmarkVertex(v_i) && IsPoseVertex(v_j) )                   // Hpl,这里要注意一下顶点顺序
                     {
-                        Hpl_.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;   // Hpl
-                    }else if(IsLandmarkVertex(v_i)&&IsLandmarkVertex(v_j))
+                        Hpl_.block(index_j, index_i-pose_dim, dim_j, dim_i).noalias() += hessian.transpose();
+                    }else if( IsLandmarkVertex(v_i) && IsLandmarkVertex(v_j) )               // Hll
                     {
-                        // vertex的id是自动生成的,pose在前,landmark在后,所以需要减去pose的size
-                        Hll_.at(v_j->Id()-pose_size) = hessian;                            // Hll
+                        // pose在前,landmark在后,所以需要减去pose的dim
+                        Hll_.at((index_i-pose_dim)/dim_i).noalias() += hessian;
                     }else{
                         // Hlp不用存,Hpl转置
                     }
@@ -506,31 +506,33 @@ void Problem::SolveLinearSystem() {
 
         }else{    // dense存储方式的SC求解
 
+            MatXX Hpp = Hpp_;
             MatXX Hpm = Hpl_;
             MatXX Hmp = Hpl_.transpose();
             VecX bpp = b_.segment(0, reserve_size);
             VecX bmm = b_.segment(reserve_size, marg_size);
 
-            std::vector<Mat33> Hll_inv;
-            Hll_inv.reserve(Hll_.size());
+            std::vector<Mat33> Hmm_inv;
+            Hmm_inv.reserve(Hll_.size());
             for(const Mat33 &hll:Hll_){
-                Hll_inv.emplace_back( hll.inverse() );
+                Hmm_inv.emplace_back( hll.inverse() );
             }
 
             MatXX tempH(MatXX::Zero(reserve_size, marg_size));
 
-            assert(marg_size == 3*Hll_inv.size());
+            assert(marg_size == 3*Hmm_inv.size());
 
             // 分块乘,避免大量的零块相乘
-            for(int i=0; i<Hll_inv.size(); i++){
-                tempH.block(0, 3*i, reserve_size, 3).noalias() = Hpm.block(0, 3*i, reserve_size, 3)*Hll_inv[i];
+            for(int i=0; i<Hmm_inv.size(); i++){
+                tempH.block(0, 3*i, reserve_size, 3).noalias() += Hpm.block(0, 3*i, reserve_size, 3)*Hmm_inv[i];
             }
 
-            MatXX temp(MatXX::Zero(reserve_size, reserve_size));
-            temp.noalias() = tempH * Hmp;                // 这个地方会有时候突然特别耗时,还不知道原因,原来0.几,突然要十几
+            // MatXX temp = tempH * Hmp;
+            // MatXX temp(MatXX::Zero(reserve_size, reserve_size));
+            // temp.noalias() = tempH * Hmp;                // 这个地方会有时候突然特别耗时,还不知道原因,原来0.几,突然要十几
 
             // H_pp_schur = Hpp - Hpl*Hll_inv*Hlp
-            MatXX H_pp_schur = Hpp_ - temp;
+            MatXX H_pp_schur = Hpp - tempH * Hmp;
             // b_pp_schur = bp - Hpl*Hll_inv*bl
             VecX b_pp_schur = bpp - tempH * bmm;
 
@@ -547,8 +549,8 @@ void Problem::SolveLinearSystem() {
             // step3: solve Hmm * delta_x_ll = bmm - Hmp * delta_x_pp;
             VecX delta_x_ll(marg_size);
             VecX indirect_vec = (bmm - Hmp * delta_x_pp);
-            for(int i=0; i<Hll_inv.size(); i++){
-                delta_x_ll.segment(3*i, 3).noalias() = Hll_inv[i]*indirect_vec.segment(3*i, 3);
+            for(int i=0; i<Hmm_inv.size(); i++){
+                delta_x_ll.segment(3*i, 3).noalias() = Hmm_inv[i]*indirect_vec.segment(3*i, 3);
             }
             delta_x_.tail(marg_size) = delta_x_ll;
 

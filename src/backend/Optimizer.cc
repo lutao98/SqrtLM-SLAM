@@ -68,11 +68,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 {
     TicToc op_tic;
 
-    // if(solver==Optimizer::CERES)
-    //     CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
-    // else if(solver==Optimizer::G2O)
-    //     g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
-    // else
+    if(solver==Optimizer::CERES)
+        CeresOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
+    else if(solver==Optimizer::G2O)
+        g2oOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap,lidarconfig);
+    else
         MyOptimizer::LocalBundleAdjustment(pKF,pbStopFlag,pMap);
 
     std::cout << "[LocalMapping](4)::LocalBundleAdjustment() 耗时" << op_tic.toc() << " ms." << std::endl;

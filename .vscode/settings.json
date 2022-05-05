@@ -58,6 +58,7 @@
         "strstream": "cpp",
         "csignal": "cpp",
         "cstdarg": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "unordered_set": "cpp"
     }
 }

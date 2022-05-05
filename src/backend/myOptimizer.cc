@@ -330,7 +330,7 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
     // Setup optimizer
     // step 4 构建 problem
     backend::Problem problem(backend::Problem::ProblemType::SLAM_PROBLEM);
-    problem.setStorageMode(backend::Problem::StorageMode::GENERIC_MODE);
+    problem.setStorageMode(backend::Problem::StorageMode::DENSE_MODE);
     problem.setDrawHessian(false);
     problem.setDebugOutput(true);       //调试输出:迭代 耗时等信息
 
@@ -498,7 +498,7 @@ void MyOptimizer::LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pM
                 e->setLevel(1);
             }
             // 第二阶段优化的时候就属于精求解了,所以就不使用核函数
-            // e->SetLossFunction(nullptr);         // 记得改回去
+            e->SetLossFunction(nullptr);         // 记得改回去
         }
 
         // Optimize again without the outliers
